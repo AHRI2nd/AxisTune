@@ -1,0 +1,47 @@
+# Build output
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+build/
+publish/
+artifacts/
+
+# .NET
+*.user
+*.suo
+*.userprefs
+project.lock.json
+project.assets.json
+*.nuget.props
+*.nuget.targets
+.packages/
+
+# Visual Studio / Rider / VS Code
+.vs/
+.vscode/
+.idea/
+*.DotSettings.user
+
+# Test / coverage
+[Tt]est[Rr]esult*/
+coverage*.json
+coverage*.xml
+*.coverage
+*.trx
+
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# Logs / misc
+*.log
+*.tmp

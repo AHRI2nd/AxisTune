@@ -1,0 +1,16 @@
+# 필수 드라이버
+
+AxisTune는 두 개의 오픈소스 커널 드라이버(Nefarius)를 사용합니다. 앱은 미설치 시 경고를 표시합니다.
+
+| 드라이버 | 용도 | 다운로드 |
+|---|---|---|
+| **ViGEmBus** | 가상 Xbox 360 컨트롤러 출력 | https://github.com/nefarius/ViGEmBus/releases |
+| **HidHide** | 게임으로부터 물리 컨트롤러 숨김 | https://github.com/nefarius/HidHide/releases |
+
+## 설치
+1. 위 링크에서 각 설치 프로그램(`.exe` / `.msi`)을 받아 실행합니다.
+2. 설치 후 재부팅을 권장합니다.
+3. AxisTune를 **관리자 권한**으로 실행하면 두 드라이버를 자동으로 사용합니다.
+
+> 배포 패키지를 만들 때는 두 설치 프로그램을 이 폴더에 넣고 인스톨러에서 함께 설치하도록 구성하세요.
+> (라이선스상 재배포 조건을 확인할 것 — ViGEmBus/HidHide는 각자의 라이선스를 따릅니다.)

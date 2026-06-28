@@ -1,0 +1,98 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:AxisTune.App.ViewModels"
+        mc:Ignorable="d" d:DesignWidth="520" d:DesignHeight="600"
+        x:Class="AxisTune.App.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Width="520" Height="620"
+        MinWidth="460" MinHeight="560"
+        Icon="/Assets/app.ico"
+        Title="AxisTune">
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="20">
+
+        <!-- 헤더: 상태 표시 + 드라이버 On/Off -->
+        <Border Grid.Row="0" Background="#1E1E22" CornerRadius="12" Padding="18">
+            <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
+                <Ellipse Grid.Column="0" Width="14" Height="14" VerticalAlignment="Center"
+                         Fill="{Binding StatusColor}" />
+                <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding StatusText}" FontSize="16" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding StatusDetail}" FontSize="12" Foreground="#9AA0A6"
+                               IsVisible="{Binding StatusDetail, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                </StackPanel>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
+                    <TextBlock Text="드라이버" VerticalAlignment="Center" Foreground="#C8CCD0" />
+                    <ToggleSwitch IsChecked="{Binding IsDriverEnabled}"
+                                  OnContent="On" OffContent="Off" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- 드라이버 미설치 경고 배너 -->
+        <Border Grid.Row="1" Margin="0,12,0,0" Background="#3A2A00" CornerRadius="10" Padding="12"
+                IsVisible="{Binding !ViGEmAvailable}">
+            <TextBlock Text="⚠ ViGEmBus가 설치되어 있지 않습니다. 가상 컨트롤러 출력을 위해 ViGEmBus 설치가 필요합니다."
+                       TextWrapping="Wrap" Foreground="#FFD479" />
+        </Border>
+
+        <!-- 본문: 장치 선택 + 설정 -->
+        <ScrollViewer Grid.Row="2" Margin="0,16,0,0">
+            <StackPanel Spacing="20">
+
+                <StackPanel Spacing="8">
+                    <TextBlock Text="입력 장치" FontSize="14" FontWeight="SemiBold" Foreground="#C8CCD0" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <ComboBox Grid.Column="0" HorizontalAlignment="Stretch"
+                                  ItemsSource="{Binding Devices}"
+                                  SelectedItem="{Binding SelectedDevice}"
+                                  PlaceholderText="감지된 컨트롤러를 선택하세요">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:DeviceItemViewModel">
+                                    <TextBlock Text="{Binding Display}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <Button Grid.Column="1" Content="새로고침" Command="{Binding RefreshDevicesCommand}" />
+                    </Grid>
+                    <TextBlock Text="Xbox · PlayStation · Switch(Pro/Joy-Con)는 자동 감지됩니다."
+                               FontSize="12" Foreground="#7A8088" />
+                </StackPanel>
+
+                <StackPanel Spacing="12">
+                    <TextBlock Text="설정" FontSize="14" FontWeight="SemiBold" Foreground="#C8CCD0" />
+
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Windows 시작 시 자동 실행" />
+                            <TextBlock Text="로그인 시 백그라운드(트레이)로 실행" FontSize="11" Foreground="#7A8088" />
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding RunAtStartup}" />
+                    </Grid>
+
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="창 닫기 시 트레이로 최소화" />
+                            <TextBlock Text="끄면 닫기(X) 시 완전 종료" FontSize="11" Foreground="#7A8088" />
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding MinimizeToTrayOnClose}" />
+                    </Grid>
+
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="시작 시 드라이버 자동 On" />
+                            <TextBlock Text="앱 실행과 동시에 가상 출력 활성화" FontSize="11" Foreground="#7A8088" />
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoEnableOnStartup}" />
+                    </Grid>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- 푸터 -->
+        <TextBlock Grid.Row="3" Margin="0,16,0,0" FontSize="11" Foreground="#5F656D"
+                   Text="스틱/트리거 곡선 편집과 수동 매핑은 다음 단계에서 제공됩니다." />
+    </Grid>
+</Window>
