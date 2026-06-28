@@ -9,7 +9,8 @@ public sealed record DetectedGamepad(
     string Name,
     GamepadKind Kind,
     ushort Vendor,
-    ushort Product)
+    ushort Product,
+    bool IsGamepad)
 {
     /// <summary>ViGEm 가상 Xbox 360 패드(Microsoft VID 0x045E / PID 0x028E)인지 여부.</summary>
     public bool IsLikelyVirtualXbox => Vendor == 0x045E && Product == 0x028E;

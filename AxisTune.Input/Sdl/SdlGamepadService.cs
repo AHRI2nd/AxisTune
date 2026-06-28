@@ -39,12 +39,21 @@ public sealed unsafe class SdlGamepadService : IDisposable
 
     private readonly object _rumbleSync = new();
     private SDL_Gamepad* _gamepad;
+    private SDL_Joystick* _joystick;
     private uint _openInstanceId;
     private bool _initialized;
 
     public bool IsInitialized => _initialized;
     public uint OpenInstanceId => _openInstanceId;
-    public bool HasOpenDevice => _gamepad is not null;
+
+    /// <summary>게임패드 또는 raw 조이스틱 중 하나라도 열려 있는지.</summary>
+    public bool HasOpenDevice => _gamepad is not null || _joystick is not null;
+
+    /// <summary>게임패드(자동 매핑) 모드로 열려 있는지.</summary>
+    public bool HasOpenGamepad => _gamepad is not null;
+
+    /// <summary>raw 조이스틱(수동 매핑) 모드로 열려 있는지.</summary>
+    public bool HasOpenJoystick => _joystick is not null;
 
     /// <summary>SDL을 게임패드 모드로 초기화. 입력 스레드에서 1회 호출.</summary>
     public bool Initialize()
@@ -67,24 +76,32 @@ public sealed unsafe class SdlGamepadService : IDisposable
     }
 
     /// <summary>SDL 내부 상태/이벤트를 갱신. 폴링 루프 매 틱 시작에 호출.</summary>
-    public void Update() => SDL_UpdateGamepads();
+    public void Update()
+    {
+        SDL_UpdateGamepads();
+        SDL_UpdateJoysticks();
+    }
 
-    /// <summary>현재 연결된 게임패드 목록을 반환. virtualXbox는 ViGEm 가상 패드(루프백) 포함 여부.</summary>
-    public IReadOnlyList<DetectedGamepad> EnumerateGamepads(bool includeVirtual = false)
+    /// <summary>
+    /// 연결된 모든 컨트롤러를 반환(게임패드 + 미인식 조이스틱). 미인식 장치는
+    /// <see cref="DetectedGamepad.IsGamepad"/>=false로 표시되어 수동 매핑 대상이 된다.
+    /// </summary>
+    public IReadOnlyList<DetectedGamepad> EnumerateControllers(bool includeVirtual = false)
     {
         var result = new List<DetectedGamepad>();
-        using var ids = SDL_GetGamepads();
+        using var ids = SDL_GetJoysticks();
         if (ids is null) return result;
         for (int i = 0; i < ids.Count; i++)
         {
             var id = ids[i];
             uint instanceId = (uint)id;
-            ushort vendor = SDL_GetGamepadVendorForID(id);
-            ushort product = SDL_GetGamepadProductForID(id);
-            var kind = MapKind(SDL_GetGamepadTypeForID(id));
-            string name = SDL_GetGamepadNameForID(id) ?? "Unknown";
+            bool isGamepad = SDL_IsGamepad(id);
+            ushort vendor = SDL_GetJoystickVendorForID(id);
+            ushort product = SDL_GetJoystickProductForID(id);
+            var kind = isGamepad ? MapKind(SDL_GetGamepadTypeForID(id)) : GamepadKind.Unknown;
+            string name = (isGamepad ? SDL_GetGamepadNameForID(id) : SDL_GetJoystickNameForID(id)) ?? "Unknown";
 
-            var pad = new DetectedGamepad(instanceId, name, kind, vendor, product);
+            var pad = new DetectedGamepad(instanceId, name, kind, vendor, product, isGamepad);
             if (!includeVirtual && pad.IsLikelyVirtualXbox)
                 continue; // 가상 Xbox 패드는 입력원에서 제외(루프백 차단)
             result.Add(pad);
@@ -128,12 +145,44 @@ public sealed unsafe class SdlGamepadService : IDisposable
         return true;
     }
 
+    /// <summary>지정 장치를 raw 조이스틱(수동 매핑) 모드로 연다. 기존 장치는 닫는다.</summary>
+    public bool OpenJoystick(uint instanceId)
+    {
+        CloseGamepad();
+        CloseJoystick();
+        var js = SDL_OpenJoystick((SDL_JoystickID)instanceId);
+        if (js is null) return false;
+        _joystick = js;
+        _openInstanceId = instanceId;
+        return true;
+    }
+
+    /// <summary>열린 raw 조이스틱의 축/버튼/햇을 읽어 채운다(hot path). 장치 없으면 false.</summary>
+    public bool ReadRawState(RawJoystickState state)
+    {
+        var js = _joystick;
+        if (js is null) return false;
+
+        int axes = SDL_GetNumJoystickAxes(js);
+        int buttons = SDL_GetNumJoystickButtons(js);
+        int hats = SDL_GetNumJoystickHats(js);
+        state.EnsureSize(axes, buttons, hats);
+
+        for (int i = 0; i < axes; i++)
+            state.Axes[i] = SDL_GetJoystickAxis(js, i);
+        for (int i = 0; i < buttons; i++)
+            state.Buttons[i] = SDL_GetJoystickButton(js, i);
+        for (int i = 0; i < hats; i++)
+            state.Hats[i] = SDL_GetJoystickHat(js, i);
+        return true;
+    }
+
     /// <summary>열린 장치의 HID 인터페이스 경로(symbolic link)를 반환. HidHide 숨김 대상 해석에 사용.</summary>
     public string? GetOpenDevicePath()
     {
-        var gp = _gamepad;
-        if (gp is null) return null;
-        return SDL_GetGamepadPath(gp);
+        if (_gamepad is not null) return SDL_GetGamepadPath(_gamepad);
+        if (_joystick is not null) return SDL_GetJoystickPath(_joystick);
+        return null;
     }
 
     /// <summary>열린 물리 장치에 진동을 전달한다(게임→가상→물리 왕복의 마지막 단계).</summary>
@@ -141,10 +190,12 @@ public sealed unsafe class SdlGamepadService : IDisposable
     {
         lock (_rumbleSync)
         {
-            var gp = _gamepad;
-            if (gp is null) return;
+            uint dur = durationMs == 0 ? 0xFFFFFFFFu : durationMs;
             // durationMs=0은 다음 진동 명령까지 무한 지속(우리는 매 변화 시 갱신).
-            SDL_RumbleGamepad(gp, lowFrequency, highFrequency, durationMs == 0 ? 0xFFFFFFFFu : durationMs);
+            if (_gamepad is not null)
+                SDL_RumbleGamepad(_gamepad, lowFrequency, highFrequency, dur);
+            else if (_joystick is not null)
+                SDL_RumbleJoystick(_joystick, lowFrequency, highFrequency, dur);
         }
     }
 
@@ -157,8 +208,30 @@ public sealed unsafe class SdlGamepadService : IDisposable
                 SDL_CloseGamepad(_gamepad);
                 _gamepad = null;
             }
-            _openInstanceId = 0;
+            if (_joystick is null)
+                _openInstanceId = 0;
         }
+    }
+
+    public void CloseJoystick()
+    {
+        lock (_rumbleSync)
+        {
+            if (_joystick is not null)
+            {
+                SDL_CloseJoystick(_joystick);
+                _joystick = null;
+            }
+            if (_gamepad is null)
+                _openInstanceId = 0;
+        }
+    }
+
+    /// <summary>열린 장치를 모두 닫는다.</summary>
+    public void CloseAll()
+    {
+        CloseGamepad();
+        CloseJoystick();
     }
 
     private static float Norm(short v)
@@ -195,7 +268,7 @@ public sealed unsafe class SdlGamepadService : IDisposable
 
     public void Dispose()
     {
-        CloseGamepad();
+        CloseAll();
         if (_initialized)
         {
             SDL_Quit();

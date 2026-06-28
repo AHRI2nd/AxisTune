@@ -10,11 +10,15 @@ public sealed class DeviceItemViewModel
         InstanceId = device.InstanceId;
         Name = device.Name;
         Kind = device.Kind;
+        IsGamepad = device.IsGamepad;
     }
 
     public uint InstanceId { get; }
     public string Name { get; }
     public GamepadKind Kind { get; }
+
+    /// <summary>SDL이 표준 게임패드로 인식했는지(false면 수동 매핑 필요).</summary>
+    public bool IsGamepad { get; }
 
     public string KindLabel => Kind switch
     {
@@ -27,5 +31,5 @@ public sealed class DeviceItemViewModel
         _ => "알 수 없음",
     };
 
-    public string Display => $"{KindLabel} · {Name}";
+    public string Display => IsGamepad ? $"{KindLabel} · {Name}" : $"수동 · {Name}";
 }

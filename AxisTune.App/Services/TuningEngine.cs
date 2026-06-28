@@ -37,6 +37,15 @@ public sealed class TuningEngine : IDisposable
     // 엔진 스레드 전용 상태.
     private uint _selectedDevice;
     private string? _selectedName;
+    private bool _deviceIsGamepad = true;
+
+    // 수동 매핑(null = 자동 게임패드 매핑). 원자적 교체.
+    private volatile ControllerMapping? _mapping;
+    private readonly RawJoystickState _rawState = new();
+
+    // "눌러서 바인딩" 캡처(엔진 스레드 전용).
+    private Action<CapturedInput?>? _captureCallback;
+    private RawJoystickState? _captureBaseline;
 
     // 진동 전달: ViGEm 콜백(임의 스레드) → 엔진 스레드. -1 = 대기 없음.
     private int _pendingRumble = -1;
@@ -95,20 +104,57 @@ public sealed class TuningEngine : IDisposable
     // ---- UI 스레드에서 호출하는 비동기 요청(명령 큐 경유) ----
 
     public void RequestEnumerate(Action<IReadOnlyList<DetectedGamepad>> callback)
-        => Post(() => callback(_sdl.EnumerateGamepads()));
+        => Post(() => callback(_sdl.EnumerateControllers()));
 
-    public void RequestSelectDevice(uint instanceId, string deviceName, Action<bool> callback)
+    public void RequestSelectDevice(uint instanceId, string deviceName, bool isGamepad, Action<bool> callback)
         => Post(() =>
         {
-            bool ok = _sdl.OpenGamepad(instanceId);
-            if (ok)
-            {
-                _selectedDevice = instanceId;
-                _selectedName = deviceName;
-                if (_enabled) ReapplyHide();
-            }
+            _selectedDevice = instanceId;
+            _selectedName = deviceName;
+            _deviceIsGamepad = isGamepad;
+            bool ok = OpenSelectedInternal();
+            if (ok && _enabled) ReapplyHide();
             callback(ok);
             RaiseStatus();
+        });
+
+    /// <summary>활성 매핑 교체. null = 자동 게임패드 매핑. 모드가 바뀌면 장치를 재오픈.</summary>
+    public void RequestSetMapping(ControllerMapping? mapping)
+        => Post(() =>
+        {
+            bool wasManual = _mapping is not null;
+            _mapping = mapping;
+            bool nowManual = mapping is not null;
+            // 모드(게임패드↔조이스틱)가 달라지면 재오픈 필요.
+            if (wasManual != nowManual && _selectedDevice != 0)
+            {
+                OpenSelectedInternal();
+                if (_enabled) ReapplyHide();
+            }
+            RaiseStatus();
+        });
+
+    /// <summary>"눌러서 바인딩": 다음으로 작동되는 물리 입력을 한 번 캡처해 콜백으로 보고.</summary>
+    public void RequestCaptureInput(Action<CapturedInput?> onResult)
+        => Post(() =>
+        {
+            if (!_sdl.HasOpenJoystick)
+            {
+                onResult(null);
+                return;
+            }
+            // 기준선 스냅샷(현재 눌린 입력은 무시).
+            _sdl.ReadRawState(_rawState);
+            _captureBaseline = CopyRaw(_rawState);
+            _captureCallback = onResult;
+        });
+
+    public void RequestCancelCapture()
+        => Post(() =>
+        {
+            _captureCallback?.Invoke(null);
+            _captureCallback = null;
+            _captureBaseline = null;
         });
 
     public void RequestSetEnabled(bool enabled)
@@ -117,6 +163,16 @@ public sealed class TuningEngine : IDisposable
             if (enabled) EnableInternal();
             else DisableInternal();
         });
+
+    /// <summary>현재 선택 장치를 적절한 모드(게임패드/조이스틱)로 연다(엔진 스레드).</summary>
+    private bool OpenSelectedInternal()
+    {
+        if (_selectedDevice == 0) return false;
+        bool manual = _mapping is not null || !_deviceIsGamepad;
+        return manual
+            ? _sdl.OpenJoystick(_selectedDevice)
+            : _sdl.OpenGamepad(_selectedDevice);
+    }
 
     private void Post(Action command)
     {
@@ -153,11 +209,27 @@ public sealed class TuningEngine : IDisposable
                 ForwardPendingRumble();
 
                 bool output = _enabled && _virtual.IsConnected;
-                // 출력 중이거나 프리뷰가 필요할 때만 입력을 읽고 처리한다(유휴 비용 절감).
-                if (_sdl.HasOpenDevice && (output || _previewEnabled))
+                bool capturing = _captureCallback is not null;
+                // 출력/프리뷰/캡처 중 하나라도 필요할 때만 입력을 읽는다(유휴 비용 절감).
+                if (_sdl.HasOpenDevice && (output || _previewEnabled || capturing))
                 {
                     raw = XboxOutputState.Empty;
-                    if (_sdl.ReadState(ref raw))
+                    bool got;
+                    if (_sdl.HasOpenJoystick)
+                    {
+                        got = _sdl.ReadRawState(_rawState);
+                        if (got)
+                        {
+                            if (capturing) TryCapture();
+                            (_mapping ?? ControllerMapping.Empty).Apply(_rawState, ref raw);
+                        }
+                    }
+                    else
+                    {
+                        got = _sdl.ReadState(ref raw);
+                    }
+
+                    if (got)
                     {
                         XboxOutputState processed = _profile.Apply(raw);
                         if (output) _virtual.Submit(processed);
@@ -277,6 +349,72 @@ public sealed class TuningEngine : IDisposable
         raw = default;
         processed = default;
         return false;
+    }
+
+    // ---- "눌러서 바인딩" 캡처 ----
+
+    private const int CaptureAxisThreshold = 12000; // ~0.37 (32767 기준)
+
+    private void TryCapture()
+    {
+        var cb = _captureCallback;
+        var baseline = _captureBaseline;
+        if (cb is null || baseline is null) return;
+        var cur = _rawState;
+
+        int nButtons = Math.Min(cur.Buttons.Length, baseline.Buttons.Length);
+        for (int i = 0; i < nButtons; i++)
+            if (cur.Buttons[i] && !baseline.Buttons[i])
+            {
+                FinishCapture(cb, new CapturedInput(CaptureKind.Button, i, 0, default));
+                return;
+            }
+
+        int nHats = Math.Min(cur.Hats.Length, baseline.Hats.Length);
+        for (int i = 0; i < nHats; i++)
+        {
+            byte b = cur.Hats[i];
+            if (b != 0 && b != baseline.Hats[i])
+            {
+                FinishCapture(cb, new CapturedInput(CaptureKind.Hat, i, 0, FirstHatDirection(b)));
+                return;
+            }
+        }
+
+        int nAxes = Math.Min(cur.Axes.Length, baseline.Axes.Length);
+        for (int i = 0; i < nAxes; i++)
+        {
+            int delta = cur.Axes[i] - baseline.Axes[i];
+            if (Math.Abs(delta) > CaptureAxisThreshold)
+            {
+                FinishCapture(cb, new CapturedInput(CaptureKind.Axis, i, delta > 0 ? 1 : -1, default));
+                return;
+            }
+        }
+    }
+
+    private void FinishCapture(Action<CapturedInput?> callback, CapturedInput value)
+    {
+        _captureCallback = null;
+        _captureBaseline = null;
+        callback(value);
+    }
+
+    private static HatDirection FirstHatDirection(byte b)
+    {
+        if ((b & (byte)HatDirection.Up) != 0) return HatDirection.Up;
+        if ((b & (byte)HatDirection.Right) != 0) return HatDirection.Right;
+        if ((b & (byte)HatDirection.Down) != 0) return HatDirection.Down;
+        return HatDirection.Left;
+    }
+
+    private static RawJoystickState CopyRaw(RawJoystickState s)
+    {
+        var copy = new RawJoystickState(s.Axes.Length, s.Buttons.Length, s.Hats.Length);
+        Array.Copy(s.Axes, copy.Axes, s.Axes.Length);
+        Array.Copy(s.Buttons, copy.Buttons, s.Buttons.Length);
+        Array.Copy(s.Hats, copy.Hats, s.Hats.Length);
+        return copy;
     }
 
     private void RaiseStatus(string? message = null)

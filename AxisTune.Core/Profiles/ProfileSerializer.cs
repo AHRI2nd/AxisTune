@@ -68,4 +68,52 @@ public static class ProfileSerializer
     /// <summary>채널 인덱스의 기본 부호 특성(0~3 스틱=양극성, 4~5 트리거=단극성).</summary>
     public static AxisKind DefaultKind(int channelIndex)
         => channelIndex >= 4 ? AxisKind.Unipolar : AxisKind.Bipolar;
+
+    // ---- 수동 매핑 변환 ----
+
+    public static ControllerMapping ToControllerMapping(ControllerMappingDto? dto)
+    {
+        if (dto is null) return ControllerMapping.Empty;
+
+        var buttons = new ButtonBinding[dto.Buttons.Count];
+        for (int i = 0; i < buttons.Length; i++)
+            buttons[i] = new ButtonBinding(dto.Buttons[i].PhysicalButton, dto.Buttons[i].Target);
+
+        var hats = new HatBinding[dto.Hats.Count];
+        for (int i = 0; i < hats.Length; i++)
+            hats[i] = new HatBinding(dto.Hats[i].Hat, dto.Hats[i].Direction, dto.Hats[i].Target);
+
+        var axes = new AxisBinding[dto.Axes.Count];
+        for (int i = 0; i < axes.Length; i++)
+            axes[i] = new AxisBinding(dto.Axes[i].PhysicalAxis, dto.Axes[i].Target, dto.Axes[i].Invert);
+
+        return new ControllerMapping(buttons, hats, axes);
+    }
+
+    public static ControllerMappingDto FromControllerMapping(ControllerMapping mapping)
+    {
+        var dto = new ControllerMappingDto();
+        foreach (var b in mapping.Buttons)
+            dto.Buttons.Add(new ButtonBindingDto { PhysicalButton = b.PhysicalButton, Target = b.Target });
+        foreach (var h in mapping.Hats)
+            dto.Hats.Add(new HatBindingDto { Hat = h.Hat, Direction = h.Direction, Target = h.Target });
+        foreach (var a in mapping.Axes)
+            dto.Axes.Add(new AxisBindingDto { PhysicalAxis = a.PhysicalAxis, Target = a.Target, Invert = a.Invert });
+        return dto;
+    }
+
+    // ---- 다중 프로파일 문서 ----
+
+    public static NamedProfileDto CreateDefaultProfile(string name)
+        => new() { Name = name, Axes = CreateDefault(), Mapping = null };
+
+    public static ProfileDocumentDto CreateDefaultDocument()
+    {
+        var profile = CreateDefaultProfile("기본");
+        return new ProfileDocumentDto
+        {
+            ActiveProfileId = profile.Id,
+            Profiles = { profile },
+        };
+    }
 }
