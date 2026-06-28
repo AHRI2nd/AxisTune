@@ -41,11 +41,24 @@ public sealed class TuningEngine : IDisposable
     // 진동 전달: ViGEm 콜백(임의 스레드) → 엔진 스레드. -1 = 대기 없음.
     private int _pendingRumble = -1;
 
+    // 실시간 프리뷰: 에디터가 열려 있을 때만 raw/processed를 발행(seqlock).
+    private volatile bool _previewEnabled;
+    private long _snapVersion;
+    private XboxOutputState _snapRaw;
+    private XboxOutputState _snapProcessed;
+
     /// <summary>상태 변경 알림(엔진 스레드에서 발생 — 구독자가 UI 스레드로 마샬링해야 함).</summary>
     public event Action<EngineStatus>? StatusChanged;
 
     public bool IsEnabled => _enabled;
     public bool IsRunning => _running;
+
+    /// <summary>실시간 프리뷰 발행 여부(튜닝 화면 표시 중에만 켜서 유휴 비용 절감).</summary>
+    public bool PreviewEnabled
+    {
+        get => _previewEnabled;
+        set { _previewEnabled = value; _wake.Set(); }
+    }
 
     /// <summary>HidHide 드라이버 설치 여부(UI 안내용).</summary>
     public bool IsHidHideInstalled => _hidHide.IsInstalled;
@@ -139,13 +152,16 @@ public sealed class TuningEngine : IDisposable
                 _sdl.Update();
                 ForwardPendingRumble();
 
-                if (_enabled && _virtual.IsConnected && _sdl.HasOpenDevice)
+                bool output = _enabled && _virtual.IsConnected;
+                // 출력 중이거나 프리뷰가 필요할 때만 입력을 읽고 처리한다(유휴 비용 절감).
+                if (_sdl.HasOpenDevice && (output || _previewEnabled))
                 {
                     raw = XboxOutputState.Empty;
                     if (_sdl.ReadState(ref raw))
                     {
                         XboxOutputState processed = _profile.Apply(raw);
-                        _virtual.Submit(processed);
+                        if (output) _virtual.Submit(processed);
+                        if (_previewEnabled) PublishSnapshot(raw, processed);
                     }
                     Thread.Sleep(1); // ~1ms (NativeTiming으로 해상도 1ms 확보)
                 }
@@ -232,6 +248,35 @@ public sealed class TuningEngine : IDisposable
         ushort low = (ushort)(((packed >> 8) & 0xFF) * 257);
         ushort high = (ushort)((packed & 0xFF) * 257);
         _sdl.SendRumble(low, high);
+    }
+
+    // ---- 실시간 프리뷰 스냅샷(seqlock: 쓰기는 엔진 스레드, 읽기는 UI 스레드) ----
+
+    private void PublishSnapshot(in XboxOutputState raw, in XboxOutputState processed)
+    {
+        // 홀수 버전 = 쓰기 중, 짝수 = 완료. 구조체가 워드보다 커서 tearing을 막는다.
+        Volatile.Write(ref _snapVersion, _snapVersion + 1);
+        _snapRaw = raw;
+        _snapProcessed = processed;
+        Volatile.Write(ref _snapVersion, _snapVersion + 1);
+    }
+
+    /// <summary>최신 raw/processed 상태를 읽는다(UI 프리뷰용). 발행 전이면 false.</summary>
+    public bool TryGetSnapshot(out XboxOutputState raw, out XboxOutputState processed)
+    {
+        for (int attempt = 0; attempt < 8; attempt++)
+        {
+            long v1 = Volatile.Read(ref _snapVersion);
+            if ((v1 & 1) != 0) continue; // 쓰기 중
+            raw = _snapRaw;
+            processed = _snapProcessed;
+            long v2 = Volatile.Read(ref _snapVersion);
+            if (v1 == v2 && v1 != 0)
+                return true;
+        }
+        raw = default;
+        processed = default;
+        return false;
     }
 
     private void RaiseStatus(string? message = null)
