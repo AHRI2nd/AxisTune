@@ -33,9 +33,12 @@
 
         <!-- 드라이버 미설치 경고 -->
         <Border Grid.Row="1" Margin="0,12,0,0" Background="#3A2A00" CornerRadius="10" Padding="12"
-                IsVisible="{Binding !ViGEmAvailable}">
-            <TextBlock Text="⚠ ViGEmBus가 설치되어 있지 않습니다. 가상 컨트롤러 출력을 위해 ViGEmBus 설치가 필요합니다."
-                       TextWrapping="Wrap" Foreground="#FFD479" />
+                IsVisible="{Binding AnyDriverMissing}">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" VerticalAlignment="Center" TextWrapping="Wrap" Foreground="#FFD479"
+                           Text="⚠ 필수 드라이버가 설치되어 있지 않습니다. 드라이버 탭에서 설치하세요." />
+                <Button Grid.Column="1" Content="드라이버 설치" Command="{Binding GoToDriversCommand}" />
+            </Grid>
         </Border>
 
         <!-- 프로파일 바 -->
@@ -267,6 +270,67 @@
                         </StackPanel>
                     </ScrollViewer>
                 </Grid>
+            </TabItem>
+
+            <!-- ===== 드라이버 탭 ===== -->
+            <TabItem Header="드라이버">
+                <ScrollViewer Margin="0,12,0,0">
+                    <StackPanel Spacing="14">
+                        <TextBlock TextWrapping="Wrap" Foreground="#9AA0A6" FontSize="12"
+                                   Text="AxisTune는 두 개의 오픈소스 드라이버(Nefarius)를 사용합니다. 아래 [설치]를 누르면 공식 릴리스를 받아 설치 프로그램을 실행합니다. 설치 후 재부팅이 필요할 수 있습니다." />
+
+                        <!-- ViGEmBus -->
+                        <Border Background="#1A1A20" CornerRadius="10" Padding="14">
+                            <StackPanel Spacing="8">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <Ellipse Grid.Column="0" Width="12" Height="12" VerticalAlignment="Center"
+                                             Fill="{Binding ViGEmDriver.StatusColor}" />
+                                    <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                                        <TextBlock Text="{Binding ViGEmDriver.Name}" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding ViGEmDriver.Description}" FontSize="11" Foreground="#7A8088" />
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="2" VerticalAlignment="Center"
+                                               Text="{Binding ViGEmDriver.StatusText}"
+                                               Foreground="{Binding ViGEmDriver.StatusColor}" />
+                                </Grid>
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <Button Content="설치" Command="{Binding ViGEmDriver.InstallCommand}"
+                                            IsEnabled="{Binding !ViGEmDriver.IsBusy}" />
+                                    <Button Content="다운로드 페이지" Command="{Binding ViGEmDriver.OpenPageCommand}" />
+                                    <TextBlock VerticalAlignment="Center" FontSize="11" Foreground="#7A8088"
+                                               Text="{Binding ViGEmDriver.BusyText}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- HidHide -->
+                        <Border Background="#1A1A20" CornerRadius="10" Padding="14">
+                            <StackPanel Spacing="8">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <Ellipse Grid.Column="0" Width="12" Height="12" VerticalAlignment="Center"
+                                             Fill="{Binding HidHideDriver.StatusColor}" />
+                                    <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                                        <TextBlock Text="{Binding HidHideDriver.Name}" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding HidHideDriver.Description}" FontSize="11" Foreground="#7A8088" />
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="2" VerticalAlignment="Center"
+                                               Text="{Binding HidHideDriver.StatusText}"
+                                               Foreground="{Binding HidHideDriver.StatusColor}" />
+                                </Grid>
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <Button Content="설치" Command="{Binding HidHideDriver.InstallCommand}"
+                                            IsEnabled="{Binding !HidHideDriver.IsBusy}" />
+                                    <Button Content="다운로드 페이지" Command="{Binding HidHideDriver.OpenPageCommand}" />
+                                    <TextBlock VerticalAlignment="Center" FontSize="11" Foreground="#7A8088"
+                                               Text="{Binding HidHideDriver.BusyText}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock FontSize="11" Foreground="#5F656D" TextWrapping="Wrap"
+                                   Text="설치 상태가 '설치됨'으로 바뀌지 않으면 재부팅 후 앱을 다시 실행하세요." />
+                    </StackPanel>
+                </ScrollViewer>
             </TabItem>
         </TabControl>
     </Grid>

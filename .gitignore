@@ -45,3 +45,6 @@ $RECYCLE.BIN/
 # Logs / misc
 *.log
 *.tmp
+
+# Personal dev notes (untracked)
+Guide.md

@@ -1,8 +1,8 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="AxisTune.App.App"
-             RequestedThemeVariant="Default">
-             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+             RequestedThemeVariant="Dark">
+             <!-- 어두운 패널 색에 맞춰 다크 테마로 고정(라이트 시스템에서도 글자 대비 유지). -->
 
     <Application.Styles>
         <FluentTheme />

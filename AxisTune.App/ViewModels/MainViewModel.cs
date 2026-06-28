@@ -37,6 +37,9 @@ public partial class MainViewModel : ObservableObject
     public ObservableCollection<ProfileListItemViewModel> Profiles { get; } = new();
     public ObservableCollection<AxisTuningViewModel> Channels { get; } = new();
 
+    public DriverStatusViewModel ViGEmDriver { get; }
+    public DriverStatusViewModel HidHideDriver { get; }
+
     [ObservableProperty] private DeviceItemViewModel? selectedDevice;
     [ObservableProperty] private ProfileListItemViewModel? selectedProfile;
     [ObservableProperty] private AxisTuningViewModel? selectedChannel;
@@ -48,8 +51,15 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string statusText = "준비";
     [ObservableProperty] private string statusDetail = string.Empty;
     [ObservableProperty] private string statusColor = "#9AA0A6";
-    [ObservableProperty] private bool viGEmAvailable = true;
-    [ObservableProperty] private bool hidHideAvailable = true;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AnyDriverMissing))]
+    private bool viGEmAvailable = true;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AnyDriverMissing))]
+    private bool hidHideAvailable = true;
+
+    public bool AnyDriverMissing => !ViGEmAvailable || !HidHideAvailable;
     [ObservableProperty] private bool runAtStartup;
     [ObservableProperty] private bool minimizeToTrayOnClose = true;
     [ObservableProperty] private bool autoEnableOnStartup;
@@ -58,6 +68,14 @@ public partial class MainViewModel : ObservableObject
     {
         _engine = engine;
         _settings = settings;
+
+        ViGEmDriver = new DriverStatusViewModel(
+            DriverKind.ViGEmBus, "ViGEmBus", "가상 Xbox 360 컨트롤러 출력에 필요",
+            DriverStatus.IsViGEmAvailable);
+        HidHideDriver = new DriverStatusViewModel(
+            DriverKind.HidHide, "HidHide", "게임으로부터 물리 컨트롤러를 숨기는 데 필요",
+            () => _engine.IsHidHideInstalled);
+
         _document = ProfileDocumentStore.Load();
         _activeProfile = ResolveActiveProfile();
 
@@ -248,9 +266,14 @@ public partial class MainViewModel : ObservableObject
 
     public void ProbeDrivers()
     {
-        ViGEmAvailable = DriverStatus.IsViGEmAvailable();
-        HidHideAvailable = _engine.IsHidHideInstalled;
+        ViGEmDriver.Refresh();
+        HidHideDriver.Refresh();
+        ViGEmAvailable = ViGEmDriver.IsInstalled;
+        HidHideAvailable = HidHideDriver.IsInstalled;
     }
+
+    [RelayCommand]
+    private void GoToDrivers() => SelectedTabIndex = 3;
 
     [RelayCommand]
     public void RefreshDevices()
