@@ -1,0 +1,54 @@
+name: Build Installer
+
+# 수동 실행 전용 (자동 트리거 없음) — Actions 탭에서 "Run workflow" 클릭 시에만 빌드.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "설치 버전 (예: 0.1.0)"
+        required: true
+        default: "0.1.0"
+      selfContained:
+        description: ".NET 런타임 포함 (사용자 PC에 설치 불필요)"
+        type: boolean
+        default: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Test (Core)
+        run: dotnet test AxisTune.Core.Tests -c Release --no-restore
+
+      - name: Publish (win-x64)
+        run: >
+          dotnet publish AxisTune.App/AxisTune.App.csproj
+          -c Release -r win-x64
+          --self-contained ${{ inputs.selfContained }}
+          -p:PublishSingleFile=false
+          -o publish/app
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Build installer
+        run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DMyAppVersion=${{ inputs.version }} installer\AxisTune.iss'
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: AxisTune-Setup-${{ inputs.version }}
+          path: installer-output/*.exe
+          if-no-files-found: error

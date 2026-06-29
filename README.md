@@ -58,6 +58,15 @@ AxisTune.App     Avalonia UI · tray · engine (hot loop) · settings · localiz
 AxisTune.Core.Tests   xUnit unit tests
 ```
 
+## Installer (GitHub Actions)
+
+A **manual-only** workflow builds a Windows installer. It never runs automatically — trigger it from
+the repo's **Actions → Build Installer → Run workflow** (requires the workflow to be on the default
+branch). It publishes the app (self-contained by default — no .NET install needed on the target),
+packages it with Inno Setup, and uploads `AxisTune-Setup-<version>.exe` as a build artifact.
+See [.github/workflows/build-installer.yml](.github/workflows/build-installer.yml) and
+[installer/AxisTune.iss](installer/AxisTune.iss).
+
 ## Limitations
 
 - **XInput controllers can't be hidden.** HidHide only hides HID/DirectInput devices. A controller
