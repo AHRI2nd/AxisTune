@@ -8,8 +8,8 @@
         mc:Ignorable="d" d:DesignWidth="560" d:DesignHeight="720"
         x:Class="AxisTune.App.MainWindow"
         x:DataType="vm:MainViewModel"
-        Width="560" Height="780"
-        MinWidth="500" MinHeight="420"
+        Width="880" Height="600"
+        MinWidth="740" MinHeight="470"
         Icon="/Assets/app.ico"
         Title="AxisTune">
 
@@ -72,7 +72,7 @@
             </Grid>
         </Border>
 
-        <TabControl Grid.Row="4" Margin="0,12,0,0" SelectedIndex="{Binding SelectedTabIndex}">
+        <TabControl Grid.Row="4" Margin="0,12,0,0" TabStripPlacement="Left" SelectedIndex="{Binding SelectedTabIndex}">
 
             <!-- ===== 장치 탭 ===== -->
             <TabItem Header="{l:Loc Tab_Devices}">
@@ -150,24 +150,22 @@
                 </ScrollViewer>
             </TabItem>
 
-            <!-- ===== 튜닝 탭 ===== -->
+            <!-- ===== 튜닝 탭 (좌: 컨텍스트 패널 / 우: 게임패드) ===== -->
             <TabItem Header="{l:Loc Tab_Tuning}">
-                <Grid ColumnDefinitions="170,*" Margin="0,12,0,0" ColumnSpacing="14">
+                <Grid ColumnDefinitions="290,*" Margin="0,8,0,0" ColumnSpacing="12">
+                    <Border Grid.Column="0" Background="#15151A" CornerRadius="12" Padding="14">
+                      <ScrollViewer AllowAutoHide="False" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Spacing="12">
+                          <TextBlock Text="{Binding PanelHint}" Foreground="#9AA0A6" FontSize="13" TextWrapping="Wrap"
+                                     IsVisible="{Binding PanelHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                          <StackPanel Spacing="14" IsVisible="{Binding ShowTuningEditor}">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="{Binding SelectedChannel.Label}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding StickAxisY}" OnContent="Y" OffContent="X"
+                                              IsVisible="{Binding IsStickSelected}" />
+                            </Grid>
 
-                    <ListBox Grid.Column="0"
-                             ItemsSource="{Binding Channels}"
-                             SelectedItem="{Binding SelectedChannel}">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate x:DataType="vm:AxisTuningViewModel">
-                                <TextBlock Text="{Binding Label}" />
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-
-                    <ScrollViewer Grid.Column="1" AllowAutoHide="False" HorizontalScrollBarVisibility="Disabled">
-                        <StackPanel Spacing="14" IsVisible="{Binding SelectedChannel, Converter={x:Static ObjectConverters.IsNotNull}}">
-
-                            <ctrl:CurveEditor Height="240"
+                            <ctrl:CurveEditor Height="200"
                                               Points="{Binding SelectedChannel.Points}"
                                               Interpolation="{Binding SelectedChannel.Interpolation}"
                                               InnerDeadzone="{Binding SelectedChannel.InnerDeadzone}"
@@ -242,63 +240,52 @@
                                     <TextBlock FontSize="11" Foreground="#7A8088" Text="{l:Loc Tune_PreviewNote}" />
                                 </StackPanel>
                             </Border>
+                          </StackPanel>
                         </StackPanel>
-                    </ScrollViewer>
+                      </ScrollViewer>
+                    </Border>
+                    <ctrl:ControllerView Grid.Column="1" SelectedControl="{Binding SelectedControl}" LiveState="{Binding LiveState}" />
                 </Grid>
             </TabItem>
 
-            <!-- ===== 매핑 탭 ===== -->
+            <!-- ===== 매핑 탭 (좌: 선택 컨트롤 바인딩 / 우: 게임패드) ===== -->
             <TabItem Header="{l:Loc Tab_Mapping}">
-                <ScrollViewer AllowAutoHide="False" HorizontalScrollBarVisibility="Disabled" Margin="0,12,0,0">
-                  <StackPanel Spacing="12">
-                    <Grid ColumnDefinitions="*,Auto">
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="{l:Loc Map_Use}" FontWeight="SemiBold" />
-                            <TextBlock Text="{l:Loc Map_Use_Sub}" FontSize="11" Foreground="#7A8088" />
+                <Grid ColumnDefinitions="290,*" Margin="0,8,0,0" ColumnSpacing="12">
+                    <Border Grid.Column="0" Background="#15151A" CornerRadius="12" Padding="14">
+                      <ScrollViewer AllowAutoHide="False" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Spacing="12">
+                          <Grid ColumnDefinitions="*,Auto">
+                              <StackPanel Grid.Column="0">
+                                  <TextBlock Text="{l:Loc Map_Use}" FontWeight="SemiBold" />
+                                  <TextBlock Text="{l:Loc Map_Use_Sub}" FontSize="11" Foreground="#7A8088" />
+                              </StackPanel>
+                              <ToggleSwitch Grid.Column="1" IsChecked="{Binding ManualMappingEnabled}" />
+                          </Grid>
+
+                          <TextBlock Text="{Binding PanelHint}" Foreground="#9AA0A6" FontSize="13" TextWrapping="Wrap"
+                                     IsVisible="{Binding PanelHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+                          <StackPanel IsVisible="{Binding ShowMappingRows}" IsEnabled="{Binding ManualMappingEnabled}" Spacing="2">
+                              <ItemsControl ItemsSource="{Binding SelectedMappingRows}">
+                                  <ItemsControl.ItemTemplate>
+                                      <DataTemplate x:DataType="vm:BindingRowViewModel">
+                                          <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,4" ColumnSpacing="8">
+                                              <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                                  <TextBlock Text="{Binding Label}" />
+                                                  <TextBlock Text="{Binding BindingText}" FontSize="11" Foreground="#9AA0A6" />
+                                              </StackPanel>
+                                              <Button Grid.Column="1" Content="{Binding CaptureLabel}" Command="{Binding BindCommand}" />
+                                              <Button Grid.Column="2" Content="✕" Command="{Binding ClearCommand}" />
+                                          </Grid>
+                                      </DataTemplate>
+                                  </ItemsControl.ItemTemplate>
+                              </ItemsControl>
+                          </StackPanel>
                         </StackPanel>
-                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding ManualMappingEnabled}" />
-                    </Grid>
-
-                    <TextBlock FontSize="11" Foreground="#7A8088" Text="{l:Loc Map_Hint}" />
-
-                    <StackPanel Spacing="14" IsEnabled="{Binding ManualMappingEnabled}">
-                            <StackPanel Spacing="6">
-                                <Grid ColumnDefinitions="*,Auto">
-                                    <TextBlock Grid.Column="0" Text="{l:Loc Map_Buttons}" FontWeight="SemiBold" Foreground="#C8CCD0" />
-                                    <Button Grid.Column="1" Content="{l:Loc Map_ClearAll}" Command="{Binding Mapping.ClearAllCommand}" />
-                                </Grid>
-                                <ItemsControl ItemsSource="{Binding Mapping.ButtonRows}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="vm:BindingRowViewModel">
-                                            <Grid ColumnDefinitions="110,*,Auto,Auto" Margin="0,2" ColumnSpacing="8">
-                                                <TextBlock Grid.Column="0" Text="{Binding Label}" VerticalAlignment="Center" />
-                                                <TextBlock Grid.Column="1" Text="{Binding BindingText}" VerticalAlignment="Center" Foreground="#9AA0A6" />
-                                                <Button Grid.Column="2" Content="{Binding CaptureLabel}" Command="{Binding BindCommand}" />
-                                                <Button Grid.Column="3" Content="✕" Command="{Binding ClearCommand}" />
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </StackPanel>
-
-                            <StackPanel Spacing="6">
-                                <TextBlock Text="{l:Loc Map_Axes}" FontWeight="SemiBold" Foreground="#C8CCD0" />
-                                <ItemsControl ItemsSource="{Binding Mapping.AxisRows}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="vm:BindingRowViewModel">
-                                            <Grid ColumnDefinitions="110,*,Auto,Auto" Margin="0,2" ColumnSpacing="8">
-                                                <TextBlock Grid.Column="0" Text="{Binding Label}" VerticalAlignment="Center" />
-                                                <TextBlock Grid.Column="1" Text="{Binding BindingText}" VerticalAlignment="Center" Foreground="#9AA0A6" />
-                                                <Button Grid.Column="2" Content="{Binding CaptureLabel}" Command="{Binding BindCommand}" />
-                                                <Button Grid.Column="3" Content="✕" Command="{Binding ClearCommand}" />
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </StackPanel>
-                    </StackPanel>
-                  </StackPanel>
-                </ScrollViewer>
+                      </ScrollViewer>
+                    </Border>
+                    <ctrl:ControllerView Grid.Column="1" SelectedControl="{Binding SelectedControl}" LiveState="{Binding LiveState}" />
+                </Grid>
             </TabItem>
 
             <!-- ===== 드라이버 탭 ===== -->

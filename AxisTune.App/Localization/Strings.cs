@@ -100,6 +100,11 @@ internal static class Strings
         ["MapT_LS"] = "LS(누름)",
         ["MapT_RS"] = "RS(누름)",
 
+        // 다이어그램 컨텍스트 패널
+        ["Diagram_Hint"] = "게임패드에서 컨트롤을 클릭해 설정하세요",
+        ["Diagram_ButtonInMapping"] = "버튼은 매핑 탭에서 설정합니다",
+        ["Diagram_AxisToEdit"] = "편집할 축",
+
         // 드라이버 탭
         ["Drv_Intro"] = "AxisTune는 두 개의 오픈소스 드라이버(Nefarius)를 사용합니다. 아래 [설치]를 누르면 공식 릴리스를 받아 설치 프로그램을 실행합니다. 설치 후 재부팅이 필요할 수 있습니다.",
         ["Drv_Install"] = "설치",
@@ -237,6 +242,11 @@ internal static class Strings
         ["Map_Axis"] = "Axis {0}{1}",
         ["MapT_LS"] = "LS (press)",
         ["MapT_RS"] = "RS (press)",
+
+        // Diagram context panel
+        ["Diagram_Hint"] = "Click a control on the gamepad to configure it",
+        ["Diagram_ButtonInMapping"] = "Buttons are configured in the Mapping tab",
+        ["Diagram_AxisToEdit"] = "Axis to edit",
 
         // Drivers tab
         ["Drv_Intro"] = "AxisTune uses two open-source drivers (Nefarius). Click [Install] below to download the official release and run its installer. A reboot may be required afterward.",
