@@ -197,6 +197,12 @@ public partial class App : Application
         _mainWindow.Activate();
     }
 
+    /// <summary>두 번째 인스턴스가 실행됐을 때 기존 창을 앞으로 가져온다.</summary>
+    public void ActivateMainWindow() => ShowMainWindow();
+
+    /// <summary>외부(제거 관리자 등)에서 정상 종료를 요청 — 드라이버 정리 후 완전 종료.</summary>
+    public void RequestQuit() => ExitApplication();
+
     private void ExitApplication()
     {
         if (_isExiting) return;
