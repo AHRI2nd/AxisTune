@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using Avalonia.Threading;
+using AxisTune.App.Localization;
 using AxisTune.App.Services;
 using AxisTune.Core.Controls;
 using AxisTune.Core.Profiles;
@@ -11,21 +12,22 @@ namespace AxisTune.App.ViewModels;
 /// <summary>활성 프로파일의 수동 매핑 편집. "눌러서 바인딩" 캡처를 엔진과 연동한다.</summary>
 public partial class MappingViewModel : ObservableObject
 {
-    private static readonly (string Label, XboxButton Button)[] ButtonTargets =
+    // LabelKey는 현지화 키이거나(예: MapT_LS, Ch_LSX) 그대로 표시할 기호(A, D-Pad ↑).
+    private static readonly (string LabelKey, XboxButton Button)[] ButtonTargets =
     {
         ("A", XboxButton.A), ("B", XboxButton.B), ("X", XboxButton.X), ("Y", XboxButton.Y),
         ("LB", XboxButton.LeftShoulder), ("RB", XboxButton.RightShoulder),
         ("Back", XboxButton.Back), ("Start", XboxButton.Start), ("Guide", XboxButton.Guide),
-        ("LS(누름)", XboxButton.LeftThumb), ("RS(누름)", XboxButton.RightThumb),
+        ("MapT_LS", XboxButton.LeftThumb), ("MapT_RS", XboxButton.RightThumb),
         ("D-Pad ↑", XboxButton.DpadUp), ("D-Pad ↓", XboxButton.DpadDown),
         ("D-Pad ←", XboxButton.DpadLeft), ("D-Pad →", XboxButton.DpadRight),
     };
 
-    private static readonly (string Label, AxisChannel Axis)[] AxisTargets =
+    private static readonly (string LabelKey, AxisChannel Axis)[] AxisTargets =
     {
-        ("왼쪽 스틱 X", AxisChannel.LeftStickX), ("왼쪽 스틱 Y", AxisChannel.LeftStickY),
-        ("오른쪽 스틱 X", AxisChannel.RightStickX), ("오른쪽 스틱 Y", AxisChannel.RightStickY),
-        ("왼쪽 트리거", AxisChannel.LeftTrigger), ("오른쪽 트리거", AxisChannel.RightTrigger),
+        ("Ch_LSX", AxisChannel.LeftStickX), ("Ch_LSY", AxisChannel.LeftStickY),
+        ("Ch_RSX", AxisChannel.RightStickX), ("Ch_RSY", AxisChannel.RightStickY),
+        ("Ch_LT", AxisChannel.LeftTrigger), ("Ch_RT", AxisChannel.RightTrigger),
     };
 
     private readonly TuningEngine _engine;
@@ -52,9 +54,17 @@ public partial class MappingViewModel : ObservableObject
     private void BuildRows()
     {
         foreach (var t in ButtonTargets)
-            ButtonRows.Add(BindingRowViewModel.ForButton(t.Label, t.Button, BeginBind, ClearBinding));
+            ButtonRows.Add(BindingRowViewModel.ForButton(t.LabelKey, t.Button, BeginBind, ClearBinding));
         foreach (var t in AxisTargets)
-            AxisRows.Add(BindingRowViewModel.ForAxis(t.Label, t.Axis, BeginBind, ClearBinding));
+            AxisRows.Add(BindingRowViewModel.ForAxis(t.LabelKey, t.Axis, BeginBind, ClearBinding));
+    }
+
+    /// <summary>언어 변경 시 라벨·바인딩 텍스트를 다시 현지화.</summary>
+    public void RefreshLocalized()
+    {
+        foreach (var r in ButtonRows) r.RefreshLocalized();
+        foreach (var r in AxisRows) r.RefreshLocalized();
+        RefreshAll();
     }
 
     public void LoadFrom(ControllerMappingDto? dto)
@@ -158,17 +168,18 @@ public partial class MappingViewModel : ObservableObject
 
     private void RefreshRow(BindingRowViewModel row)
     {
+        var loc = Localizer.Instance;
         if (row.IsAxis)
         {
             row.BindingText = _axes.TryGetValue(row.Axis, out var a)
-                ? $"축 {a.Index}{(a.Invert ? "−" : "+")}"
-                : "(없음)";
+                ? loc.Format("Map_Axis", a.Index, a.Invert ? "−" : "+")
+                : loc.Get("Map_None");
         }
         else
         {
             row.BindingText = _buttons.TryGetValue(row.Button, out var b)
-                ? (b.Kind == CaptureKind.Button ? $"버튼 {b.Index}" : $"햇 {b.Index} {b.Dir}")
-                : "(없음)";
+                ? (b.Kind == CaptureKind.Button ? loc.Format("Map_Btn", b.Index) : loc.Format("Map_Hat", b.Index, b.Dir))
+                : loc.Get("Map_None");
         }
     }
 

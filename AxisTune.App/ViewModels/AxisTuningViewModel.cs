@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using AxisTune.App.Localization;
 using AxisTune.Core.Axis;
 using AxisTune.Core.Controls;
 using AxisTune.Core.Curves;
@@ -15,9 +16,12 @@ namespace AxisTune.App.ViewModels;
 public partial class AxisTuningViewModel : ObservableObject
 {
     public AxisChannel Channel { get; }
-    public string Label { get; }
+    public string LabelKey { get; }
+    public string Label => Localizer.Instance.Get(LabelKey);
     public AxisKind Kind { get; }
     public bool IsStick => Kind == AxisKind.Bipolar;
+
+    public void RefreshLocalized() => OnPropertyChanged(nameof(Label));
 
     public ObservableCollection<CurveControlPoint> Points { get; } = new();
 
@@ -37,10 +41,10 @@ public partial class AxisTuningViewModel : ObservableObject
 
     private bool _loading;
 
-    public AxisTuningViewModel(AxisChannel channel, string label, AxisConfigDto dto)
+    public AxisTuningViewModel(AxisChannel channel, string labelKey, AxisConfigDto dto)
     {
         Channel = channel;
-        Label = label;
+        LabelKey = labelKey;
         Kind = dto.Kind;
         LoadFrom(dto);
 

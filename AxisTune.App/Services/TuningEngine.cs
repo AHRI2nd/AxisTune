@@ -38,6 +38,9 @@ public sealed class TuningEngine : IDisposable
     private uint _selectedDevice;
     private string? _selectedName;
     private bool _deviceIsGamepad = true;
+    private bool _hideActive; // 원본이 실제로 다른 앱에 숨겨졌는지
+    private int _virtualUserIndex = -1; // 가상 패드의 XInput 슬롯(미보고 시 -1)
+    private uint _loopTick;
 
     // 수동 매핑(null = 자동 게임패드 매핑). 원자적 교체.
     private volatile ControllerMapping? _mapping;
@@ -210,6 +213,17 @@ public sealed class TuningEngine : IDisposable
 
                 bool output = _enabled && _virtual.IsConnected;
                 bool capturing = _captureCallback is not null;
+
+                // 가상 패드 XInput 슬롯 조회(미보고 시 예외 → hot path 회피 위해 ~256틱마다만 시도).
+                if (output && _virtualUserIndex < 0 && (++_loopTick & 0xFF) == 0)
+                {
+                    int? idx = _virtual.TryGetUserIndex();
+                    if (idx is >= 0)
+                    {
+                        _virtualUserIndex = idx.Value;
+                        RaiseStatus();
+                    }
+                }
                 // 출력/프리뷰/캡처 중 하나라도 필요할 때만 입력을 읽는다(유휴 비용 절감).
                 if (_sdl.HasOpenDevice && (output || _previewEnabled || capturing))
                 {
@@ -286,6 +300,8 @@ public sealed class TuningEngine : IDisposable
     {
         try { _virtual.Disconnect(); } catch { }
         try { _hidHide.Restore(); } catch { }
+        _hideActive = false;
+        _virtualUserIndex = -1;
         _enabled = false;
         RaiseStatus();
     }
@@ -303,6 +319,7 @@ public sealed class TuningEngine : IDisposable
                 _hidHide.HideInstances(targets);
         }
         catch { /* 숨김 실패는 치명적이지 않음(출력은 계속) */ }
+        _hideActive = _hidHide.IsHiding;
     }
 
     private void OnRumbleReceived(byte large, byte small)
@@ -425,11 +442,18 @@ public sealed class TuningEngine : IDisposable
         else if (!_sdl.HasOpenDevice) state = EngineState.NoDevice;
         else state = EngineState.Active;
 
+        // 동작 중인데 원본을 숨기지 못한 경우(주로 XInput 컨트롤러) 경고 키를 전달(UI에서 현지화).
+        if (message is null && state == EngineState.Active && !_hideActive)
+        {
+            message = _hidHide.IsInstalled ? "Warn_HideFailedXInput" : "Warn_HideFailedNoHidHide";
+        }
+
         StatusChanged?.Invoke(new EngineStatus(
             state,
             _selectedName,
-            HidHideActive: _enabled && _hidHide.IsOperational,
-            message));
+            HidHideActive: _enabled && _hideActive,
+            message,
+            VirtualUserIndex: _virtualUserIndex));
     }
 
     public void Dispose()

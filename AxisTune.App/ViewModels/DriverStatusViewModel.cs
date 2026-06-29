@@ -1,4 +1,5 @@
 using Avalonia.Threading;
+using AxisTune.App.Localization;
 using AxisTune.App.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -10,30 +11,37 @@ public partial class DriverStatusViewModel : ObservableObject
 {
     private readonly DriverKind _kind;
     private readonly Func<bool> _probe;
+    private readonly string _descriptionKey;
 
     public string Name { get; }
-    public string Description { get; }
+    public string Description => Localizer.Instance.Get(_descriptionKey);
 
     [ObservableProperty] private bool isInstalled;
-    [ObservableProperty] private string statusText = "확인 중…";
+    [ObservableProperty] private string statusText = string.Empty;
     [ObservableProperty] private string statusColor = "#9AA0A6";
     [ObservableProperty] private bool isBusy;
     [ObservableProperty] private string busyText = string.Empty;
 
-    public DriverStatusViewModel(DriverKind kind, string name, string description, Func<bool> probe)
+    public DriverStatusViewModel(DriverKind kind, string name, string descriptionKey, Func<bool> probe)
     {
         _kind = kind;
         _probe = probe;
+        _descriptionKey = descriptionKey;
         Name = name;
-        Description = description;
         Refresh();
     }
 
     public void Refresh()
     {
         IsInstalled = _probe();
-        StatusText = IsInstalled ? "설치됨" : "설치 안 됨";
+        StatusText = Localizer.Instance.Get(IsInstalled ? "Drv_Installed" : "Drv_NotInstalled");
         StatusColor = IsInstalled ? "#34C759" : "#FF3B30";
+    }
+
+    public void RefreshLocalized()
+    {
+        Refresh();
+        OnPropertyChanged(nameof(Description));
     }
 
     [RelayCommand]
@@ -41,29 +49,28 @@ public partial class DriverStatusViewModel : ObservableObject
     {
         if (IsBusy) return;
         IsBusy = true;
+        var loc = Localizer.Instance;
         try
         {
             bool ok = await DriverInstaller.DownloadAndRunAsync(
                 _kind,
-                msg => Dispatcher.UIThread.Post(() => BusyText = msg),
+                key => Dispatcher.UIThread.Post(() => BusyText = loc.Get(key)),
                 CancellationToken.None);
 
             if (!ok)
             {
-                // 자산 탐색 실패 → 릴리스 페이지로 폴백.
-                BusyText = "릴리스 페이지를 엽니다…";
+                BusyText = loc.Get("Drv_Busy_OpenPage");
                 DriverInstaller.OpenReleasesPage(_kind);
             }
             else
             {
-                BusyText = "설치 후 재부팅이 필요할 수 있습니다.";
+                BusyText = loc.Get("Drv_Busy_Reboot");
             }
         }
         catch
         {
-            // 네트워크/다운로드 실패 → 페이지로 폴백.
             DriverInstaller.OpenReleasesPage(_kind);
-            BusyText = "다운로드 실패 — 페이지를 열었습니다.";
+            BusyText = loc.Get("Drv_Busy_Failed");
         }
         finally
         {

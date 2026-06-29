@@ -23,6 +23,9 @@ public sealed class HidHideController
         get { try { return _service.IsOperational; } catch { return false; } }
     }
 
+    /// <summary>이 세션에서 실제로 숨긴 장치가 있는지(=원본이 다른 앱에 숨겨졌는지).</summary>
+    public bool IsHiding => _hidden.Count > 0;
+
     /// <summary>
     /// 앱 실행 파일을 화이트리스트에 등록(중복 방지). 등록된 앱은 숨겨진 장치를
     /// 계속 볼 수 있으므로 SDL 입력 읽기가 유지된다.

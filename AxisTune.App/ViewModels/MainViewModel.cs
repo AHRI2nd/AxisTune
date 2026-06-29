@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using Avalonia.Threading;
+using AxisTune.App.Localization;
 using AxisTune.App.Services;
 using AxisTune.Core.Axis;
 using AxisTune.Core.Controls;
@@ -12,14 +13,14 @@ namespace AxisTune.App.ViewModels;
 
 public partial class MainViewModel : ObservableObject
 {
-    private static readonly (AxisChannel Channel, string Label)[] ChannelDefs =
+    private static readonly (AxisChannel Channel, string LabelKey)[] ChannelDefs =
     {
-        (AxisChannel.LeftStickX, "왼쪽 스틱 · X"),
-        (AxisChannel.LeftStickY, "왼쪽 스틱 · Y"),
-        (AxisChannel.RightStickX, "오른쪽 스틱 · X"),
-        (AxisChannel.RightStickY, "오른쪽 스틱 · Y"),
-        (AxisChannel.LeftTrigger, "왼쪽 트리거 (LT)"),
-        (AxisChannel.RightTrigger, "오른쪽 트리거 (RT)"),
+        (AxisChannel.LeftStickX, "Ch_LSX"),
+        (AxisChannel.LeftStickY, "Ch_LSY"),
+        (AxisChannel.RightStickX, "Ch_RSX"),
+        (AxisChannel.RightStickY, "Ch_RSY"),
+        (AxisChannel.LeftTrigger, "Ch_LT"),
+        (AxisChannel.RightTrigger, "Ch_RT"),
     };
 
     private readonly TuningEngine _engine;
@@ -32,6 +33,7 @@ public partial class MainViewModel : ObservableObject
 
     private bool _suppressToggle;
     private bool _loadingProfile;
+    private EngineStatus _lastStatus;
 
     public ObservableCollection<DeviceItemViewModel> Devices { get; } = new();
     public ObservableCollection<ProfileListItemViewModel> Profiles { get; } = new();
@@ -48,9 +50,11 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool manualMappingEnabled;
     [ObservableProperty] private int selectedTabIndex;
     [ObservableProperty] private bool isDriverEnabled;
-    [ObservableProperty] private string statusText = "준비";
+    [ObservableProperty] private int languageIndex;
+    [ObservableProperty] private string statusText = string.Empty;
     [ObservableProperty] private string statusDetail = string.Empty;
     [ObservableProperty] private string statusColor = "#9AA0A6";
+    [ObservableProperty] private string virtualSlotText = string.Empty;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(AnyDriverMissing))]
     private bool viGEmAvailable = true;
@@ -70,10 +74,10 @@ public partial class MainViewModel : ObservableObject
         _settings = settings;
 
         ViGEmDriver = new DriverStatusViewModel(
-            DriverKind.ViGEmBus, "ViGEmBus", "가상 Xbox 360 컨트롤러 출력에 필요",
+            DriverKind.ViGEmBus, "ViGEmBus", "Drv_ViGEm_Desc",
             DriverStatus.IsViGEmAvailable);
         HidHideDriver = new DriverStatusViewModel(
-            DriverKind.HidHide, "HidHide", "게임으로부터 물리 컨트롤러를 숨기는 데 필요",
+            DriverKind.HidHide, "HidHide", "Drv_HidHide_Desc",
             () => _engine.IsHidHideInstalled);
 
         _document = ProfileDocumentStore.Load();
@@ -91,12 +95,35 @@ public partial class MainViewModel : ObservableObject
 
         _suppressToggle = true;
         SelectedProfile = Profiles.FirstOrDefault(p => p.Id == _activeProfile.Id);
+        LanguageIndex = settings.Language == AppLanguage.English ? 1 : 0;
         RunAtStartup = StartupManager.IsEnabled();
         MinimizeToTrayOnClose = settings.MinimizeToTrayOnClose;
         AutoEnableOnStartup = settings.AutoEnableOnStartup;
+        StatusText = Localizer.Instance.Get("Status_Ready");
         _suppressToggle = false;
 
         _engine.StatusChanged += OnEngineStatusChanged;
+        Localizer.Instance.LanguageChanged += OnLanguageChanged;
+    }
+
+    partial void OnLanguageIndexChanged(int value)
+    {
+        if (_suppressToggle) return;
+        var lang = value == 1 ? AppLanguage.English : AppLanguage.Korean;
+        Localizer.Instance.SetLanguage(lang);
+        _settings.Language = lang;
+        SettingsStore.Save(_settings);
+    }
+
+    private void OnLanguageChanged()
+    {
+        // 코드에서 만든 동적 문자열을 다시 현지화.
+        ApplyStatus(_lastStatus);
+        foreach (var ch in Channels) ch.RefreshLocalized();
+        foreach (var d in Devices) d.RefreshLocalized();
+        Mapping?.RefreshLocalized();
+        ViGEmDriver.RefreshLocalized();
+        HidHideDriver.RefreshLocalized();
     }
 
     private NamedProfileDto ResolveActiveProfile()
@@ -149,7 +176,7 @@ public partial class MainViewModel : ObservableObject
         for (int i = 0; i < ChannelDefs.Length; i++)
         {
             var def = ChannelDefs[i];
-            var vm = new AxisTuningViewModel(def.Channel, def.Label, _activeProfile.Axes.Axes[i]);
+            var vm = new AxisTuningViewModel(def.Channel, def.LabelKey, _activeProfile.Axes.Axes[i]);
             vm.Changed += OnChannelChangedHandler;
             Channels.Add(vm);
         }
@@ -177,7 +204,8 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void AddProfile()
     {
-        var profile = ProfileSerializer.CreateDefaultProfile($"프로파일 {_document.Profiles.Count + 1}");
+        var profile = ProfileSerializer.CreateDefaultProfile(
+            Localizer.Instance.Format("Profile_NewName", _document.Profiles.Count + 1));
         _document.Profiles.Add(profile);
         var item = new ProfileListItemViewModel(profile.Id, profile.Name);
         Profiles.Add(item);
@@ -374,18 +402,32 @@ public partial class MainViewModel : ObservableObject
 
     private void ApplyStatus(EngineStatus status)
     {
+        _lastStatus = status;
+        var loc = Localizer.Instance;
+
         _suppressToggle = true;
         IsDriverEnabled = status.State is EngineState.Active or EngineState.NoDevice;
         _suppressToggle = false;
 
-        (StatusText, StatusColor) = status.State switch
+        (string textKey, string color) = status.State switch
         {
-            EngineState.Active => ("동작 중 — 정제된 가상 입력 전달", "#34C759"),
-            EngineState.NoDevice => ("장치를 선택하세요", "#FF9F0A"),
-            EngineState.DriverMissing => ("ViGEmBus 설치 필요", "#FF3B30"),
-            _ => ("드라이버 꺼짐", "#9AA0A6"),
+            EngineState.Active => ("Status_Active", "#34C759"),
+            EngineState.NoDevice => ("Status_NoDevice", "#FF9F0A"),
+            EngineState.DriverMissing => ("Status_DriverMissing", "#FF3B30"),
+            _ => ("Status_Disabled", "#9AA0A6"),
         };
+        StatusText = loc.Get(textKey);
+        StatusColor = color;
 
-        StatusDetail = status.Message ?? (status.HidHideActive ? "물리 장치 숨김 활성" : string.Empty);
+        // 메시지는 키일 수도(현지화), 리터럴일 수도(예외 텍스트) 있다. Get은 미존재 키를 그대로 반환.
+        StatusDetail = status.Message is not null
+            ? loc.Get(status.Message)
+            : (status.HidHideActive ? loc.Get("Detail_HidHideActive") : string.Empty);
+
+        VirtualSlotText = status.State == EngineState.Active
+            ? (status.VirtualUserIndex >= 0
+                ? loc.Format("Slot_Known", status.VirtualUserIndex + 1)
+                : loc.Get("Slot_Pending"))
+            : string.Empty;
     }
 }

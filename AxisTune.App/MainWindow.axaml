@@ -4,11 +4,12 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:AxisTune.App.ViewModels"
         xmlns:ctrl="using:AxisTune.App.Controls"
+        xmlns:l="using:AxisTune.App.Localization"
         mc:Ignorable="d" d:DesignWidth="560" d:DesignHeight="720"
         x:Class="AxisTune.App.MainWindow"
         x:DataType="vm:MainViewModel"
-        Width="560" Height="740"
-        MinWidth="500" MinHeight="640"
+        Width="560" Height="780"
+        MinWidth="500" MinHeight="420"
         Icon="/Assets/app.ico"
         Title="AxisTune">
 
@@ -21,11 +22,13 @@
                          Fill="{Binding StatusColor}" />
                 <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
                     <TextBlock Text="{Binding StatusText}" FontSize="16" FontWeight="SemiBold" />
-                    <TextBlock Text="{Binding StatusDetail}" FontSize="12" Foreground="#9AA0A6"
+                    <TextBlock Text="{Binding StatusDetail}" FontSize="12" Foreground="#9AA0A6" TextWrapping="Wrap"
                                IsVisible="{Binding StatusDetail, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                    <TextBlock Text="{Binding VirtualSlotText}" FontSize="12" Foreground="#4C8DF6"
+                               IsVisible="{Binding VirtualSlotText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                 </StackPanel>
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
-                    <TextBlock Text="드라이버" VerticalAlignment="Center" Foreground="#C8CCD0" />
+                    <TextBlock Text="{l:Loc Header_Driver}" VerticalAlignment="Center" Foreground="#C8CCD0" />
                     <ToggleSwitch IsChecked="{Binding IsDriverEnabled}" OnContent="On" OffContent="Off" />
                 </StackPanel>
             </Grid>
@@ -36,15 +39,15 @@
                 IsVisible="{Binding AnyDriverMissing}">
             <Grid ColumnDefinitions="*,Auto">
                 <TextBlock Grid.Column="0" VerticalAlignment="Center" TextWrapping="Wrap" Foreground="#FFD479"
-                           Text="⚠ 필수 드라이버가 설치되어 있지 않습니다. 드라이버 탭에서 설치하세요." />
-                <Button Grid.Column="1" Content="드라이버 설치" Command="{Binding GoToDriversCommand}" />
+                           Text="{l:Loc Banner_DriversMissing}" />
+                <Button Grid.Column="1" Content="{l:Loc Banner_InstallDrivers}" Command="{Binding GoToDriversCommand}" />
             </Grid>
         </Border>
 
         <!-- 프로파일 바 -->
         <Border Grid.Row="2" Margin="0,12,0,0" Background="#1A1A20" CornerRadius="10" Padding="12,8">
             <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
-                <TextBlock Grid.Column="0" Text="프로파일" VerticalAlignment="Center" Foreground="#C8CCD0" />
+                <TextBlock Grid.Column="0" Text="{l:Loc Profile_Label}" VerticalAlignment="Center" Foreground="#C8CCD0" />
                 <ComboBox Grid.Column="1" Margin="8,0,0,0" HorizontalAlignment="Stretch"
                           ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}">
                     <ComboBox.ItemTemplate>
@@ -53,60 +56,66 @@
                         </DataTemplate>
                     </ComboBox.ItemTemplate>
                 </ComboBox>
-                <Button Grid.Column="2" Content="추가" Command="{Binding AddProfileCommand}" />
-                <Button Grid.Column="3" Content="삭제" Command="{Binding DeleteProfileCommand}" />
+                <Button Grid.Column="2" Content="{l:Loc Profile_Add}" Command="{Binding AddProfileCommand}" />
+                <Button Grid.Column="3" Content="{l:Loc Profile_Delete}" Command="{Binding DeleteProfileCommand}" />
             </Grid>
         </Border>
 
         <TabControl Grid.Row="3" Margin="0,12,0,0" SelectedIndex="{Binding SelectedTabIndex}">
 
             <!-- ===== 장치 탭 ===== -->
-            <TabItem Header="장치">
-                <ScrollViewer Margin="0,12,0,0">
+            <TabItem Header="{l:Loc Tab_Devices}">
+                <ScrollViewer Margin="0,12,0,0" AllowAutoHide="False" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Spacing="20">
                         <StackPanel Spacing="8">
-                            <TextBlock Text="입력 장치" FontSize="14" FontWeight="SemiBold" Foreground="#C8CCD0" />
+                            <TextBlock Text="{l:Loc Dev_InputDevice}" FontSize="14" FontWeight="SemiBold" Foreground="#C8CCD0" />
                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                                 <ComboBox Grid.Column="0" HorizontalAlignment="Stretch"
                                           ItemsSource="{Binding Devices}"
                                           SelectedItem="{Binding SelectedDevice}"
-                                          PlaceholderText="감지된 컨트롤러를 선택하세요">
+                                          PlaceholderText="{l:Loc Dev_Placeholder}">
                                     <ComboBox.ItemTemplate>
                                         <DataTemplate x:DataType="vm:DeviceItemViewModel">
                                             <TextBlock Text="{Binding Display}" />
                                         </DataTemplate>
                                     </ComboBox.ItemTemplate>
                                 </ComboBox>
-                                <Button Grid.Column="1" Content="새로고침" Command="{Binding RefreshDevicesCommand}" />
+                                <Button Grid.Column="1" Content="{l:Loc Dev_Refresh}" Command="{Binding RefreshDevicesCommand}" />
                             </Grid>
-                            <TextBlock Text="Xbox · PlayStation · Switch(Pro/Joy-Con)는 자동 감지됩니다."
-                                       FontSize="12" Foreground="#7A8088" />
+                            <TextBlock Text="{l:Loc Dev_AutoNote}" FontSize="12" Foreground="#7A8088" />
                         </StackPanel>
 
                         <StackPanel Spacing="12">
-                            <TextBlock Text="설정" FontSize="14" FontWeight="SemiBold" Foreground="#C8CCD0" />
+                            <TextBlock Text="{l:Loc Settings_Title}" FontSize="14" FontWeight="SemiBold" Foreground="#C8CCD0" />
                             <StackPanel Spacing="4">
-                                <TextBlock Text="활성 프로파일 이름" />
+                                <TextBlock Text="{l:Loc Settings_ProfileName}" />
                                 <TextBox Text="{Binding ActiveProfileName}" />
+                            </StackPanel>
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="{l:Loc Settings_Language}" />
+                                <ComboBox SelectedIndex="{Binding LanguageIndex}" HorizontalAlignment="Stretch">
+                                    <ComboBoxItem>한국어</ComboBoxItem>
+                                    <ComboBoxItem>English</ComboBoxItem>
+                                </ComboBox>
                             </StackPanel>
                             <Grid ColumnDefinitions="*,Auto">
                                 <StackPanel Grid.Column="0">
-                                    <TextBlock Text="Windows 시작 시 자동 실행" />
-                                    <TextBlock Text="로그인 시 백그라운드(트레이)로 실행" FontSize="11" Foreground="#7A8088" />
+                                    <TextBlock Text="{l:Loc Set_RunAtStartup}" />
+                                    <TextBlock Text="{l:Loc Set_RunAtStartup_Sub}" FontSize="11" Foreground="#7A8088" />
                                 </StackPanel>
                                 <ToggleSwitch Grid.Column="1" IsChecked="{Binding RunAtStartup}" />
                             </Grid>
                             <Grid ColumnDefinitions="*,Auto">
                                 <StackPanel Grid.Column="0">
-                                    <TextBlock Text="창 닫기 시 트레이로 최소화" />
-                                    <TextBlock Text="끄면 닫기(X) 시 완전 종료" FontSize="11" Foreground="#7A8088" />
+                                    <TextBlock Text="{l:Loc Set_MinTray}" />
+                                    <TextBlock Text="{l:Loc Set_MinTray_Sub}" FontSize="11" Foreground="#7A8088" />
                                 </StackPanel>
                                 <ToggleSwitch Grid.Column="1" IsChecked="{Binding MinimizeToTrayOnClose}" />
                             </Grid>
                             <Grid ColumnDefinitions="*,Auto">
                                 <StackPanel Grid.Column="0">
-                                    <TextBlock Text="시작 시 드라이버 자동 On" />
-                                    <TextBlock Text="앱 실행과 동시에 가상 출력 활성화" FontSize="11" Foreground="#7A8088" />
+                                    <TextBlock Text="{l:Loc Set_AutoEnable}" />
+                                    <TextBlock Text="{l:Loc Set_AutoEnable_Sub}" FontSize="11" Foreground="#7A8088" />
                                 </StackPanel>
                                 <ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoEnableOnStartup}" />
                             </Grid>
@@ -116,10 +125,9 @@
             </TabItem>
 
             <!-- ===== 튜닝 탭 ===== -->
-            <TabItem Header="튜닝">
+            <TabItem Header="{l:Loc Tab_Tuning}">
                 <Grid ColumnDefinitions="170,*" Margin="0,12,0,0" ColumnSpacing="14">
 
-                    <!-- 채널 목록 -->
                     <ListBox Grid.Column="0"
                              ItemsSource="{Binding Channels}"
                              SelectedItem="{Binding SelectedChannel}">
@@ -130,8 +138,7 @@
                         </ListBox.ItemTemplate>
                     </ListBox>
 
-                    <!-- 편집 패널 -->
-                    <ScrollViewer Grid.Column="1">
+                    <ScrollViewer Grid.Column="1" AllowAutoHide="False" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel Spacing="14" IsVisible="{Binding SelectedChannel, Converter={x:Static ObjectConverters.IsNotNull}}">
 
                             <ctrl:CurveEditor Height="240"
@@ -141,42 +148,41 @@
                                               OuterDeadzone="{Binding SelectedChannel.OuterDeadzone}"
                                               PreviewInput="{Binding SelectedChannel.PreviewInput}" />
 
-                            <TextBlock FontSize="11" Foreground="#7A8088"
-                                       Text="더블클릭: 점 추가 · 드래그: 이동 · 우클릭: 점 삭제" />
+                            <TextBlock FontSize="11" Foreground="#7A8088" Text="{l:Loc Tune_CurveHint}" />
 
                             <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
-                                <Button Grid.Column="0" Content="프리셋: 선형" HorizontalAlignment="Stretch"
+                                <Button Grid.Column="0" Content="{l:Loc Tune_PresetLinear}" HorizontalAlignment="Stretch"
                                         Command="{Binding SelectedChannel.PresetLinearCommand}" />
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                                    <Button Content="공격적" Command="{Binding SelectedChannel.PresetAggressiveCommand}" />
-                                    <Button Content="부드럽게" Command="{Binding SelectedChannel.PresetSmoothCommand}" />
+                                    <Button Content="{l:Loc Tune_PresetAggressive}" Command="{Binding SelectedChannel.PresetAggressiveCommand}" />
+                                    <Button Content="{l:Loc Tune_PresetSmooth}" Command="{Binding SelectedChannel.PresetSmoothCommand}" />
                                 </StackPanel>
                             </Grid>
 
                             <StackPanel Spacing="4">
                                 <Grid ColumnDefinitions="Auto,*,Auto">
-                                    <TextBlock Grid.Column="0" Text="입력 최소" Width="80" />
+                                    <TextBlock Grid.Column="0" Text="{l:Loc Tune_InputMin}" Width="92" />
                                     <Slider Grid.Column="1" Minimum="0" Maximum="0.95"
                                             Value="{Binding SelectedChannel.InputMin}" />
                                     <TextBlock Grid.Column="2" Width="44" TextAlignment="Right"
                                                Text="{Binding SelectedChannel.InputMin, StringFormat='{}{0:P0}'}" />
                                 </Grid>
                                 <Grid ColumnDefinitions="Auto,*,Auto">
-                                    <TextBlock Grid.Column="0" Text="입력 최대" Width="80" />
+                                    <TextBlock Grid.Column="0" Text="{l:Loc Tune_InputMax}" Width="92" />
                                     <Slider Grid.Column="1" Minimum="0.05" Maximum="1"
                                             Value="{Binding SelectedChannel.InputMax}" />
                                     <TextBlock Grid.Column="2" Width="44" TextAlignment="Right"
                                                Text="{Binding SelectedChannel.InputMax, StringFormat='{}{0:P0}'}" />
                                 </Grid>
                                 <Grid ColumnDefinitions="Auto,*,Auto">
-                                    <TextBlock Grid.Column="0" Text="중앙 데드존" Width="80" />
+                                    <TextBlock Grid.Column="0" Text="{l:Loc Tune_InnerDeadzone}" Width="92" />
                                     <Slider Grid.Column="1" Minimum="0" Maximum="0.9"
                                             Value="{Binding SelectedChannel.InnerDeadzone}" />
                                     <TextBlock Grid.Column="2" Width="44" TextAlignment="Right"
                                                Text="{Binding SelectedChannel.InnerDeadzone, StringFormat='{}{0:P0}'}" />
                                 </Grid>
                                 <Grid ColumnDefinitions="Auto,*,Auto">
-                                    <TextBlock Grid.Column="0" Text="외곽 데드존" Width="80" />
+                                    <TextBlock Grid.Column="0" Text="{l:Loc Tune_OuterDeadzone}" Width="92" />
                                     <Slider Grid.Column="1" Minimum="0" Maximum="0.9"
                                             Value="{Binding SelectedChannel.OuterDeadzone}" />
                                     <TextBlock Grid.Column="2" Width="44" TextAlignment="Right"
@@ -186,29 +192,28 @@
 
                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
                                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                    <TextBlock Text="곡선 보간" VerticalAlignment="Center" />
+                                    <TextBlock Text="{l:Loc Tune_Interp}" VerticalAlignment="Center" />
                                     <ComboBox SelectedIndex="{Binding SelectedChannel.InterpolationIndex}">
-                                        <ComboBoxItem>선형</ComboBoxItem>
-                                        <ComboBoxItem>부드럽게(단조 3차)</ComboBoxItem>
+                                        <ComboBoxItem Content="{l:Loc Tune_Interp_Linear}" />
+                                        <ComboBoxItem Content="{l:Loc Tune_Interp_Cubic}" />
                                     </ComboBox>
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                    <TextBlock Text="축 반전" VerticalAlignment="Center" />
+                                    <TextBlock Text="{l:Loc Tune_Invert}" VerticalAlignment="Center" />
                                     <ToggleSwitch IsChecked="{Binding SelectedChannel.Invert}" />
                                 </StackPanel>
                             </Grid>
 
                             <Border Background="#1A1A20" CornerRadius="8" Padding="12">
                                 <StackPanel Spacing="4">
-                                    <TextBlock Text="실시간 미리보기" FontSize="12" Foreground="#9AA0A6" />
+                                    <TextBlock Text="{l:Loc Tune_PreviewTitle}" FontSize="12" Foreground="#9AA0A6" />
                                     <TextBlock FontSize="13">
-                                        <Run Text="입력 " />
+                                        <Run Text="{l:Loc Tune_PreviewIn}" />
                                         <Run Text="{Binding SelectedChannel.PreviewInput, StringFormat='{}{0:P0}'}" Foreground="#4C8DF6" />
-                                        <Run Text="   →   출력 " />
+                                        <Run Text="{l:Loc Tune_PreviewArrow}" />
                                         <Run Text="{Binding SelectedChannel.PreviewOutput, StringFormat='{}{0:P0}'}" Foreground="#34C759" />
                                     </TextBlock>
-                                    <TextBlock FontSize="11" Foreground="#7A8088"
-                                               Text="튜닝 탭에서 컨트롤러를 움직이면 곡선 위에 현재 위치가 표시됩니다." />
+                                    <TextBlock FontSize="11" Foreground="#7A8088" Text="{l:Loc Tune_PreviewNote}" />
                                 </StackPanel>
                             </Border>
                         </StackPanel>
@@ -217,26 +222,24 @@
             </TabItem>
 
             <!-- ===== 매핑 탭 ===== -->
-            <TabItem Header="매핑">
-                <Grid RowDefinitions="Auto,Auto,*" Margin="0,12,0,0">
-                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+            <TabItem Header="{l:Loc Tab_Mapping}">
+                <ScrollViewer AllowAutoHide="False" HorizontalScrollBarVisibility="Disabled" Margin="0,12,0,0">
+                  <StackPanel Spacing="12">
+                    <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0">
-                            <TextBlock Text="수동 매핑 사용" FontWeight="SemiBold" />
-                            <TextBlock Text="미인식 컨트롤러를 Xbox 컨트롤로 직접 지정합니다." FontSize="11" Foreground="#7A8088" />
+                            <TextBlock Text="{l:Loc Map_Use}" FontWeight="SemiBold" />
+                            <TextBlock Text="{l:Loc Map_Use_Sub}" FontSize="11" Foreground="#7A8088" />
                         </StackPanel>
                         <ToggleSwitch Grid.Column="1" IsChecked="{Binding ManualMappingEnabled}" />
                     </Grid>
 
-                    <TextBlock Grid.Row="1" Margin="0,8,0,0" FontSize="11" Foreground="#7A8088"
-                               Text="[바인딩]을 누른 뒤 물리 버튼/축을 움직이면 해당 입력이 지정됩니다. (장치 선택 필요)" />
+                    <TextBlock FontSize="11" Foreground="#7A8088" Text="{l:Loc Map_Hint}" />
 
-                    <ScrollViewer Grid.Row="2" Margin="0,10,0,0"
-                                  IsEnabled="{Binding ManualMappingEnabled}">
-                        <StackPanel Spacing="14">
+                    <StackPanel Spacing="14" IsEnabled="{Binding ManualMappingEnabled}">
                             <StackPanel Spacing="6">
                                 <Grid ColumnDefinitions="*,Auto">
-                                    <TextBlock Grid.Column="0" Text="버튼" FontWeight="SemiBold" Foreground="#C8CCD0" />
-                                    <Button Grid.Column="1" Content="전체 지우기" Command="{Binding Mapping.ClearAllCommand}" />
+                                    <TextBlock Grid.Column="0" Text="{l:Loc Map_Buttons}" FontWeight="SemiBold" Foreground="#C8CCD0" />
+                                    <Button Grid.Column="1" Content="{l:Loc Map_ClearAll}" Command="{Binding Mapping.ClearAllCommand}" />
                                 </Grid>
                                 <ItemsControl ItemsSource="{Binding Mapping.ButtonRows}">
                                     <ItemsControl.ItemTemplate>
@@ -253,7 +256,7 @@
                             </StackPanel>
 
                             <StackPanel Spacing="6">
-                                <TextBlock Text="축(스틱·트리거)" FontWeight="SemiBold" Foreground="#C8CCD0" />
+                                <TextBlock Text="{l:Loc Map_Axes}" FontWeight="SemiBold" Foreground="#C8CCD0" />
                                 <ItemsControl ItemsSource="{Binding Mapping.AxisRows}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="vm:BindingRowViewModel">
@@ -267,17 +270,16 @@
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                             </StackPanel>
-                        </StackPanel>
-                    </ScrollViewer>
-                </Grid>
+                    </StackPanel>
+                  </StackPanel>
+                </ScrollViewer>
             </TabItem>
 
             <!-- ===== 드라이버 탭 ===== -->
-            <TabItem Header="드라이버">
-                <ScrollViewer Margin="0,12,0,0">
+            <TabItem Header="{l:Loc Tab_Drivers}">
+                <ScrollViewer Margin="0,12,0,0" AllowAutoHide="False" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Spacing="14">
-                        <TextBlock TextWrapping="Wrap" Foreground="#9AA0A6" FontSize="12"
-                                   Text="AxisTune는 두 개의 오픈소스 드라이버(Nefarius)를 사용합니다. 아래 [설치]를 누르면 공식 릴리스를 받아 설치 프로그램을 실행합니다. 설치 후 재부팅이 필요할 수 있습니다." />
+                        <TextBlock TextWrapping="Wrap" Foreground="#9AA0A6" FontSize="12" Text="{l:Loc Drv_Intro}" />
 
                         <!-- ViGEmBus -->
                         <Border Background="#1A1A20" CornerRadius="10" Padding="14">
@@ -294,9 +296,9 @@
                                                Foreground="{Binding ViGEmDriver.StatusColor}" />
                                 </Grid>
                                 <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <Button Content="설치" Command="{Binding ViGEmDriver.InstallCommand}"
+                                    <Button Content="{l:Loc Drv_Install}" Command="{Binding ViGEmDriver.InstallCommand}"
                                             IsEnabled="{Binding !ViGEmDriver.IsBusy}" />
-                                    <Button Content="다운로드 페이지" Command="{Binding ViGEmDriver.OpenPageCommand}" />
+                                    <Button Content="{l:Loc Drv_DownloadPage}" Command="{Binding ViGEmDriver.OpenPageCommand}" />
                                     <TextBlock VerticalAlignment="Center" FontSize="11" Foreground="#7A8088"
                                                Text="{Binding ViGEmDriver.BusyText}" />
                                 </StackPanel>
@@ -318,17 +320,16 @@
                                                Foreground="{Binding HidHideDriver.StatusColor}" />
                                 </Grid>
                                 <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <Button Content="설치" Command="{Binding HidHideDriver.InstallCommand}"
+                                    <Button Content="{l:Loc Drv_Install}" Command="{Binding HidHideDriver.InstallCommand}"
                                             IsEnabled="{Binding !HidHideDriver.IsBusy}" />
-                                    <Button Content="다운로드 페이지" Command="{Binding HidHideDriver.OpenPageCommand}" />
+                                    <Button Content="{l:Loc Drv_DownloadPage}" Command="{Binding HidHideDriver.OpenPageCommand}" />
                                     <TextBlock VerticalAlignment="Center" FontSize="11" Foreground="#7A8088"
                                                Text="{Binding HidHideDriver.BusyText}" />
                                 </StackPanel>
                             </StackPanel>
                         </Border>
 
-                        <TextBlock FontSize="11" Foreground="#5F656D" TextWrapping="Wrap"
-                                   Text="설치 상태가 '설치됨'으로 바뀌지 않으면 재부팅 후 앱을 다시 실행하세요." />
+                        <TextBlock FontSize="11" Foreground="#5F656D" TextWrapping="Wrap" Text="{l:Loc Drv_Footer}" />
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>

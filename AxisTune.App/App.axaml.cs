@@ -6,6 +6,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Platform;
 using Avalonia.Threading;
+using AxisTune.App.Localization;
 using AxisTune.App.Services;
 using AxisTune.App.ViewModels;
 
@@ -19,6 +20,10 @@ public partial class App : Application
     private MainWindow? _mainWindow;
     private TrayIcon? _trayIcon;
     private NativeMenuItem? _trayToggleItem;
+    private NativeMenuItem? _trayOpenItem;
+    private NativeMenuItem? _trayExitItem;
+    private EngineStatus _lastStatus;
+    private Size _lastClientSize;
     private bool _isExiting;
     private bool _engineShutDown;
 
@@ -35,9 +40,13 @@ public partial class App : Application
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
             _settings = SettingsStore.Load();
+            Localization.Localizer.Instance.SetLanguage(_settings.Language);
             _viewModel = new MainViewModel(_engine, _settings);
 
             _mainWindow = new MainWindow { DataContext = _viewModel };
+            RestoreWindowSize();
+            _lastClientSize = _mainWindow.ClientSize;
+            _mainWindow.SizeChanged += (_, e) => _lastClientSize = e.NewSize;
             _mainWindow.Closing += OnMainWindowClosing;
             desktop.MainWindow = _mainWindow;
 
@@ -75,7 +84,9 @@ public partial class App : Application
 
     private void SetupTrayIcon()
     {
-        var toggle = new NativeMenuItem("드라이버 켜기/끄기");
+        var loc = Localizer.Instance;
+
+        var toggle = new NativeMenuItem(loc.Get("Tray_DriverOn"));
         toggle.Click += (_, _) =>
         {
             if (_viewModel is not null)
@@ -83,11 +94,13 @@ public partial class App : Application
         };
         _trayToggleItem = toggle;
 
-        var open = new NativeMenuItem("열기");
+        var open = new NativeMenuItem(loc.Get("Tray_Open"));
         open.Click += (_, _) => ShowMainWindow();
+        _trayOpenItem = open;
 
-        var exit = new NativeMenuItem("종료");
+        var exit = new NativeMenuItem(loc.Get("Tray_Exit"));
         exit.Click += (_, _) => ExitApplication();
+        _trayExitItem = exit;
 
         var menu = new NativeMenu();
         menu.Items.Add(open);
@@ -98,40 +111,71 @@ public partial class App : Application
         _trayIcon = new TrayIcon
         {
             Icon = LoadIcon(),
-            ToolTipText = "AxisTune — 드라이버 꺼짐",
+            ToolTipText = loc.Format("Tray_Tip", loc.Get("TrayState_Disabled")),
             Menu = menu,
             IsVisible = true,
         };
         _trayIcon.Clicked += (_, _) => ShowMainWindow();
 
         TrayIcon.SetIcons(this, new TrayIcons { _trayIcon });
+
+        loc.LanguageChanged += () =>
+        {
+            if (_trayOpenItem is not null) _trayOpenItem.Header = loc.Get("Tray_Open");
+            if (_trayExitItem is not null) _trayExitItem.Header = loc.Get("Tray_Exit");
+            UpdateTray(_lastStatus);
+        };
     }
 
     private static WindowIcon LoadIcon()
     {
-        using var stream = AssetLoader.Open(new Uri("avares://AxisTune.App/Assets/app.ico"));
+        using var stream = AssetLoader.Open(new Uri("avares://AxisTune/Assets/app.ico"));
         return new WindowIcon(stream);
     }
 
     private void UpdateTray(EngineStatus status)
     {
         if (_trayIcon is null) return;
-        string label = status.State switch
+        _lastStatus = status;
+        var loc = Localizer.Instance;
+        string label = loc.Get(status.State switch
         {
-            EngineState.Active => "동작 중",
-            EngineState.NoDevice => "장치 선택 필요",
-            EngineState.DriverMissing => "ViGEmBus 필요",
-            _ => "드라이버 꺼짐",
-        };
-        _trayIcon.ToolTipText = $"AxisTune — {label}";
+            EngineState.Active => "TrayState_Active",
+            EngineState.NoDevice => "TrayState_NoDevice",
+            EngineState.DriverMissing => "TrayState_DriverMissing",
+            _ => "TrayState_Disabled",
+        });
+        _trayIcon.ToolTipText = loc.Format("Tray_Tip", label);
         if (_trayToggleItem is not null)
-            _trayToggleItem.Header = status.State is EngineState.Active or EngineState.NoDevice
-                ? "드라이버 끄기"
-                : "드라이버 켜기";
+            _trayToggleItem.Header = loc.Get(status.State is EngineState.Active or EngineState.NoDevice
+                ? "Tray_DriverOff"
+                : "Tray_DriverOn");
+    }
+
+    private void RestoreWindowSize()
+    {
+        if (_mainWindow is null) return;
+        if (_settings.WindowWidth is double w && w >= _mainWindow.MinWidth)
+            _mainWindow.Width = w;
+        if (_settings.WindowHeight is double h && h >= _mainWindow.MinHeight)
+            _mainWindow.Height = h;
+    }
+
+    private void SaveWindowSize()
+    {
+        // Width/Height는 리사이즈 후 갱신되지 않으므로 SizeChanged로 추적한 실제 크기를 저장한다.
+        var size = _lastClientSize;
+        if (size.Width <= 0 || size.Height <= 0)
+            size = _mainWindow?.ClientSize ?? default;
+        if (size.Width <= 0 || size.Height <= 0) return;
+        _settings.WindowWidth = size.Width;
+        _settings.WindowHeight = size.Height;
+        SettingsStore.Save(_settings);
     }
 
     private void OnMainWindowClosing(object? sender, WindowClosingEventArgs e)
     {
+        SaveWindowSize(); // 닫기(트레이 최소화/종료) 시점의 크기를 저장
         if (_isExiting) return; // 실제 종료 진행 중
 
         if (_settings.MinimizeToTrayOnClose)

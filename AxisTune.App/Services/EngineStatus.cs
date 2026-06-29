@@ -21,4 +21,5 @@ public readonly record struct EngineStatus(
     EngineState State,
     string? DeviceName,
     bool HidHideActive,
-    string? Message);
+    string? Message,
+    int VirtualUserIndex = -1);

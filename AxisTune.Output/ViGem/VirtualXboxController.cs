@@ -52,6 +52,18 @@ public sealed class VirtualXboxController : IDisposable
         pad.SubmitReport();
     }
 
+    /// <summary>
+    /// 이 가상 패드에 할당된 XInput 슬롯(User Index, 0~3)을 반환. 아직 게임/시스템이
+    /// 읽지 않아 미보고 상태면 null(ViGEm이 예외를 던짐).
+    /// </summary>
+    public int? TryGetUserIndex()
+    {
+        var pad = _pad;
+        if (pad is null) return null;
+        try { return pad.UserIndex; }
+        catch { return null; }
+    }
+
     public void Disconnect()
     {
         if (_pad is not null)

@@ -50,7 +50,7 @@ public static class DriverInstaller
     public static async Task<bool> DownloadAndRunAsync(
         DriverKind kind, Action<string> progress, CancellationToken ct)
     {
-        progress("최신 릴리스 확인 중…");
+        progress("Drv_Busy_CheckRelease");
 
         using var http = new HttpClient();
         http.DefaultRequestHeaders.UserAgent.ParseAdd("AxisTune");
@@ -62,7 +62,7 @@ public static class DriverInstaller
         (string Url, string Name)? chosen = SelectInstallerAsset(json);
         if (chosen is null) return false;
 
-        progress("설치 파일 다운로드 중…");
+        progress("Drv_Busy_Download");
         byte[] bytes = await http.GetByteArrayAsync(chosen.Value.Url, ct);
 
         string dir = Path.Combine(Path.GetTempPath(), "AxisTune");
@@ -70,7 +70,7 @@ public static class DriverInstaller
         string path = Path.Combine(dir, chosen.Value.Name);
         await File.WriteAllBytesAsync(path, bytes, ct);
 
-        progress("설치 프로그램 실행…");
+        progress("Drv_Busy_Run");
         LaunchInstaller(path);
         return true;
     }
