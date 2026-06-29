@@ -13,7 +13,7 @@
         Icon="/Assets/app.ico"
         Title="AxisTune">
 
-    <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="20">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" Margin="20">
 
         <!-- 헤더: 상태 + 드라이버 On/Off (항상 표시) -->
         <Border Grid.Row="0" Background="#1E1E22" CornerRadius="12" Padding="18">
@@ -44,8 +44,19 @@
             </Grid>
         </Border>
 
+        <!-- 업데이트 알림 배너 -->
+        <Border Grid.Row="2" Margin="0,12,0,0" Background="#13351F" CornerRadius="10" Padding="12"
+                IsVisible="{Binding UpdateAvailable}">
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                <TextBlock Grid.Column="0" VerticalAlignment="Center" TextWrapping="Wrap" Foreground="#7CE7A6"
+                           Text="{Binding UpdateText}" />
+                <Button Grid.Column="1" Content="{l:Loc Update_Download}" Command="{Binding OpenUpdateCommand}" />
+                <Button Grid.Column="2" Content="{l:Loc Update_Dismiss}" Command="{Binding DismissUpdateCommand}" />
+            </Grid>
+        </Border>
+
         <!-- 프로파일 바 -->
-        <Border Grid.Row="2" Margin="0,12,0,0" Background="#1A1A20" CornerRadius="10" Padding="12,8">
+        <Border Grid.Row="3" Margin="0,12,0,0" Background="#1A1A20" CornerRadius="10" Padding="12,8">
             <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
                 <TextBlock Grid.Column="0" Text="{l:Loc Profile_Label}" VerticalAlignment="Center" Foreground="#C8CCD0" />
                 <ComboBox Grid.Column="1" Margin="8,0,0,0" HorizontalAlignment="Stretch"
@@ -61,7 +72,7 @@
             </Grid>
         </Border>
 
-        <TabControl Grid.Row="3" Margin="0,12,0,0" SelectedIndex="{Binding SelectedTabIndex}">
+        <TabControl Grid.Row="4" Margin="0,12,0,0" SelectedIndex="{Binding SelectedTabIndex}">
 
             <!-- ===== 장치 탭 ===== -->
             <TabItem Header="{l:Loc Tab_Devices}">
@@ -118,6 +129,21 @@
                                     <TextBlock Text="{l:Loc Set_AutoEnable_Sub}" FontSize="11" Foreground="#7A8088" />
                                 </StackPanel>
                                 <ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoEnableOnStartup}" />
+                            </Grid>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="{l:Loc Set_CheckUpdates}" />
+                                    <TextBlock Text="{l:Loc Set_CheckUpdates_Sub}" FontSize="11" Foreground="#7A8088" />
+                                </StackPanel>
+                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding CheckForUpdatesOnStartup}" />
+                            </Grid>
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding CurrentVersionText}" FontSize="12" Foreground="#C8CCD0" />
+                                    <TextBlock Text="{Binding UpdateStatusText}" FontSize="11" Foreground="#7A8088"
+                                               IsVisible="{Binding UpdateStatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                </StackPanel>
+                                <Button Grid.Column="1" Content="{l:Loc Update_CheckNow}" Command="{Binding CheckUpdatesNowCommand}" />
                             </Grid>
                         </StackPanel>
                     </StackPanel>

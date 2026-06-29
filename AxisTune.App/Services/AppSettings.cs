@@ -18,6 +18,9 @@ public sealed class AppSettings
     /// <summary>앱 시작 시 드라이버를 자동으로 On.</summary>
     public bool AutoEnableOnStartup { get; set; }
 
+    /// <summary>앱 시작 시 GitHub 릴리스에서 업데이트 확인.</summary>
+    public bool CheckForUpdatesOnStartup { get; set; } = true;
+
     /// <summary>마지막으로 선택한 장치(있으면 시작 시 자동 선택).</summary>
     public uint? LastDeviceInstanceId { get; set; }
 

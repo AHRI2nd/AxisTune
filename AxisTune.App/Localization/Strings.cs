@@ -28,6 +28,17 @@ internal static class Strings
         ["Banner_DriversMissing"] = "⚠ 필수 드라이버가 설치되어 있지 않습니다. 드라이버 탭에서 설치하세요.",
         ["Banner_InstallDrivers"] = "드라이버 설치",
 
+        // 업데이트
+        ["Update_Available"] = "새 버전 {0} 사용 가능 (현재 {1})",
+        ["Update_Download"] = "다운로드",
+        ["Update_Dismiss"] = "닫기",
+        ["Set_CheckUpdates"] = "시작 시 업데이트 확인",
+        ["Set_CheckUpdates_Sub"] = "GitHub 릴리스에서 새 버전 확인",
+        ["Update_CheckNow"] = "지금 확인",
+        ["Update_Current"] = "현재 버전 {0}",
+        ["Update_UpToDate"] = "최신 버전입니다",
+        ["Update_Checking"] = "확인 중…",
+
         // 프로파일 바
         ["Profile_Label"] = "프로파일",
         ["Profile_Add"] = "추가",
@@ -154,6 +165,17 @@ internal static class Strings
         // Banner
         ["Banner_DriversMissing"] = "⚠ Required drivers are not installed. Install them in the Drivers tab.",
         ["Banner_InstallDrivers"] = "Install drivers",
+
+        // Updates
+        ["Update_Available"] = "Version {0} available (current {1})",
+        ["Update_Download"] = "Download",
+        ["Update_Dismiss"] = "Dismiss",
+        ["Set_CheckUpdates"] = "Check for updates on startup",
+        ["Set_CheckUpdates_Sub"] = "Look for a newer version on GitHub Releases",
+        ["Update_CheckNow"] = "Check now",
+        ["Update_Current"] = "Current version {0}",
+        ["Update_UpToDate"] = "You're up to date",
+        ["Update_Checking"] = "Checking…",
 
         // Profile bar
         ["Profile_Label"] = "Profile",

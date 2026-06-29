@@ -59,6 +59,7 @@ public partial class App : Application
             _engine.Start();
             _viewModel.ProbeDrivers();
             _viewModel.RefreshDevices();
+            _viewModel.RunStartupUpdateCheck();
             ApplyStartupAutomation();
 
             bool startMinimized = HasMinimizedArg();

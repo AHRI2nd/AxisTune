@@ -67,6 +67,15 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool runAtStartup;
     [ObservableProperty] private bool minimizeToTrayOnClose = true;
     [ObservableProperty] private bool autoEnableOnStartup;
+    [ObservableProperty] private bool checkForUpdatesOnStartup = true;
+    [ObservableProperty] private bool updateAvailable;
+    [ObservableProperty] private string updateText = string.Empty;
+    [ObservableProperty] private string updateStatusText = string.Empty;
+
+    public string CurrentVersionText => Localizer.Instance.Format("Update_Current", UpdateChecker.CurrentVersion);
+
+    private string _latestReleaseUrl = UpdateChecker.ReleasesPage;
+    private UpdateInfo? _lastUpdate;
 
     public MainViewModel(TuningEngine engine, AppSettings settings)
     {
@@ -99,6 +108,7 @@ public partial class MainViewModel : ObservableObject
         RunAtStartup = StartupManager.IsEnabled();
         MinimizeToTrayOnClose = settings.MinimizeToTrayOnClose;
         AutoEnableOnStartup = settings.AutoEnableOnStartup;
+        CheckForUpdatesOnStartup = settings.CheckForUpdatesOnStartup;
         StatusText = Localizer.Instance.Get("Status_Ready");
         _suppressToggle = false;
 
@@ -124,6 +134,8 @@ public partial class MainViewModel : ObservableObject
         Mapping?.RefreshLocalized();
         ViGEmDriver.RefreshLocalized();
         HidHideDriver.RefreshLocalized();
+        OnPropertyChanged(nameof(CurrentVersionText));
+        ApplyUpdateInfo(_lastUpdate, manual: false); // 업데이트 배너 문구 재현지화
     }
 
     private NamedProfileDto ResolveActiveProfile()
@@ -302,6 +314,57 @@ public partial class MainViewModel : ObservableObject
 
     [RelayCommand]
     private void GoToDrivers() => SelectedTabIndex = 3;
+
+    // ---- 업데이트 확인 ----
+
+    /// <summary>앱 시작 시 호출 — 설정이 켜져 있으면 백그라운드로 업데이트 확인.</summary>
+    public void RunStartupUpdateCheck()
+    {
+        if (CheckForUpdatesOnStartup)
+            _ = CheckUpdatesAsync(manual: false);
+    }
+
+    [RelayCommand]
+    private Task CheckUpdatesNow() => CheckUpdatesAsync(manual: true);
+
+    private async Task CheckUpdatesAsync(bool manual)
+    {
+        if (manual) UpdateStatusText = Localizer.Instance.Get("Update_Checking");
+        var info = await UpdateChecker.CheckAsync();
+        Dispatcher.UIThread.Post(() => ApplyUpdateInfo(info, manual));
+    }
+
+    private void ApplyUpdateInfo(UpdateInfo? info, bool manual)
+    {
+        _lastUpdate = info;
+        if (info is { IsNewer: true })
+        {
+            _latestReleaseUrl = info.ReleaseUrl;
+            UpdateText = Localizer.Instance.Format("Update_Available", "v" + info.LatestVersion, info.CurrentVersion);
+            UpdateAvailable = true;
+            UpdateStatusText = string.Empty;
+        }
+        else
+        {
+            UpdateAvailable = false;
+            UpdateStatusText = manual
+                ? (info is null ? string.Empty : Localizer.Instance.Get("Update_UpToDate"))
+                : string.Empty;
+        }
+    }
+
+    [RelayCommand]
+    private void OpenUpdate() => DriverInstaller.OpenUrl(_latestReleaseUrl);
+
+    [RelayCommand]
+    private void DismissUpdate() => UpdateAvailable = false;
+
+    partial void OnCheckForUpdatesOnStartupChanged(bool value)
+    {
+        if (_suppressToggle) return;
+        _settings.CheckForUpdatesOnStartup = value;
+        SettingsStore.Save(_settings);
+    }
 
     [RelayCommand]
     public void RefreshDevices()

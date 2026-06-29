@@ -4,6 +4,8 @@
     <TargetFramework>net10.0-windows</TargetFramework>
     <AssemblyName>AxisTune</AssemblyName>
     <RootNamespace>AxisTune.App</RootNamespace>
+    <!-- 업데이트 확인 기준 버전. 릴리스마다 갱신(태그와 일치시킬 것). -->
+    <Version>0.1.0</Version>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
