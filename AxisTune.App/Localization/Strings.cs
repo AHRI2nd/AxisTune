@@ -68,7 +68,8 @@ internal static class Strings
 
         // 튜닝 탭
         ["Tune_CurveHint"] = "더블클릭: 점 추가 · 드래그: 이동 · 우클릭: 점 삭제",
-        ["Tune_PresetLinear"] = "프리셋: 선형",
+        ["Tune_PresetsLabel"] = "프리셋",
+        ["Tune_PresetLinear"] = "선형",
         ["Tune_PresetAggressive"] = "공격적",
         ["Tune_PresetSmooth"] = "부드럽게",
         ["Tune_InputMin"] = "입력 최소",
@@ -211,7 +212,8 @@ internal static class Strings
 
         // Tuning tab
         ["Tune_CurveHint"] = "Double-click: add point · Drag: move · Right-click: delete",
-        ["Tune_PresetLinear"] = "Preset: Linear",
+        ["Tune_PresetsLabel"] = "Presets",
+        ["Tune_PresetLinear"] = "Linear",
         ["Tune_PresetAggressive"] = "Aggressive",
         ["Tune_PresetSmooth"] = "Smooth",
         ["Tune_InputMin"] = "Input min",

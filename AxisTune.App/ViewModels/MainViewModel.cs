@@ -40,23 +40,18 @@ public partial class MainViewModel : ObservableObject
     public ObservableCollection<ProfileListItemViewModel> Profiles { get; } = new();
     public ObservableCollection<AxisTuningViewModel> Channels { get; } = new();
 
-    // 게임패드 다이어그램: 선택된 컨트롤 + 라이브 상태 + 컨텍스트 패널 상태.
-    public ObservableCollection<BindingRowViewModel> SelectedMappingRows { get; } = new();
-
+    // 게임패드 다이어그램: 선택된 컨트롤 + 라이브 상태.
     [ObservableProperty] private ControllerControl selectedControl;
     [ObservableProperty] private XboxOutputState liveState;
-    [ObservableProperty] private bool stickAxisY;
-    [ObservableProperty] private bool isStickSelected;
-    [ObservableProperty] private bool showTuningEditor;
-    [ObservableProperty] private bool showMappingRows;
-    [ObservableProperty] private string panelHint = string.Empty;
+
+    /// <summary>다이어그램 클릭으로 강조된 항목을 화면에 스크롤하도록 코드비하인드에 요청.</summary>
+    public event Action<object>? ScrollToRequested;
 
     public DriverStatusViewModel ViGEmDriver { get; }
     public DriverStatusViewModel HidHideDriver { get; }
 
     [ObservableProperty] private DeviceItemViewModel? selectedDevice;
     [ObservableProperty] private ProfileListItemViewModel? selectedProfile;
-    [ObservableProperty] private AxisTuningViewModel? selectedChannel;
     [ObservableProperty] private MappingViewModel mapping = null!;
     [ObservableProperty] private string activeProfileName = string.Empty;
     [ObservableProperty] private bool manualMappingEnabled;
@@ -122,11 +117,12 @@ public partial class MainViewModel : ObservableObject
         AutoEnableOnStartup = settings.AutoEnableOnStartup;
         CheckForUpdatesOnStartup = settings.CheckForUpdatesOnStartup;
         StatusText = Localizer.Instance.Get("Status_Ready");
-        PanelHint = Localizer.Instance.Get("Diagram_Hint");
         _suppressToggle = false;
 
         _engine.StatusChanged += OnEngineStatusChanged;
         Localizer.Instance.LanguageChanged += OnLanguageChanged;
+
+        SelectedTabIndex = settings.LastTab; // 마지막 탭 복원(게임패드 라이브 프리뷰 재개 포함)
     }
 
     partial void OnLanguageIndexChanged(int value)
@@ -149,7 +145,6 @@ public partial class MainViewModel : ObservableObject
         HidHideDriver.RefreshLocalized();
         OnPropertyChanged(nameof(CurrentVersionText));
         ApplyUpdateInfo(_lastUpdate, manual: false); // 업데이트 배너 문구 재현지화
-        RebuildSelection(); // 컨텍스트 패널 힌트 재현지화
     }
 
     private NamedProfileDto ResolveActiveProfile()
@@ -197,22 +192,15 @@ public partial class MainViewModel : ObservableObject
 
     private void BuildChannels()
     {
-        foreach (var ch in Channels) ch.Changed -= OnChannelChangedHandler;
         Channels.Clear();
         for (int i = 0; i < ChannelDefs.Length; i++)
         {
             var def = ChannelDefs[i];
             var vm = new AxisTuningViewModel(def.Channel, def.LabelKey, _activeProfile.Axes.Axes[i]);
-            vm.Changed += OnChannelChangedHandler;
+            // 모든 채널이 동시에 표시/편집 가능하므로 클로저로 어떤 인스턴스인지 식별.
+            vm.Changed += () => OnChannelChanged(vm);
             Channels.Add(vm);
         }
-        SelectedChannel = Channels.Count > 0 ? Channels[0] : null;
-    }
-
-    private void OnChannelChangedHandler()
-    {
-        // 어떤 채널이 바뀌었는지 SelectedChannel 기준으로 처리(드래그/슬라이더는 현재 채널).
-        if (SelectedChannel is not null) OnChannelChanged(SelectedChannel);
     }
 
     partial void OnSelectedProfileChanged(ProfileListItemViewModel? value)
@@ -422,6 +410,9 @@ public partial class MainViewModel : ObservableObject
 
     partial void OnSelectedTabIndexChanged(int value)
     {
+        _settings.LastTab = value;
+        SettingsStore.Save(_settings);
+
         // 튜닝(1)·매핑(2) 탭에서 게임패드 라이브 프리뷰를 켠다.
         bool diagram = value is 1 or 2;
         _engine.PreviewEnabled = diagram;
@@ -443,8 +434,8 @@ public partial class MainViewModel : ObservableObject
 
         LiveState = processed; // 게임패드 다이어그램 라이브 상태
 
-        var channel = SelectedChannel;
-        if (channel is not null)
+        // 모든 채널이 항상 표시되므로 전부 갱신(6개 GetAxis 호출, UI 타이머 경로라 부담 없음).
+        foreach (var channel in Channels)
         {
             float inVal = raw.GetAxis(channel.Channel);
             float outVal = processed.GetAxis(channel.Channel);
@@ -453,113 +444,66 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    // ---- 게임패드 다이어그램 선택 → 컨텍스트 패널 ----
+    // ---- 게임패드 다이어그램 선택 → 강조 + 스크롤 ----
 
     partial void OnSelectedControlChanged(ControllerControl value) => RebuildSelection();
 
-    partial void OnStickAxisYChanged(bool value)
-    {
-        if (IsStickSelected) ApplyTuningChannel();
-    }
-
+    /// <summary>
+    /// 선택된 컨트롤에 대응하는 채널/바인딩 행을 강조(IsHighlighted)하고, 현재 탭의
+    /// 리스트에서 그 항목으로 스크롤하도록 코드비하인드에 요청한다.
+    /// </summary>
     private void RebuildSelection()
     {
+        foreach (var ch in Channels) ch.IsHighlighted = false;
+        foreach (var r in Mapping.ButtonRows) r.IsHighlighted = false;
+        foreach (var r in Mapping.AxisRows) r.IsHighlighted = false;
+
         var c = SelectedControl;
-        if (c == ControllerControl.None)
-        {
-            ClearPanel();
-            return;
-        }
+        if (c == ControllerControl.None) return;
 
-        if (SelectedTabIndex == 2) BuildMappingSelection(c);
-        else BuildTuningSelection(c);
-    }
-
-    private void ClearPanel()
-    {
-        ShowTuningEditor = false;
-        ShowMappingRows = false;
-        IsStickSelected = false;
-        SelectedMappingRows.Clear();
-        PanelHint = Localizer.Instance.Get("Diagram_Hint");
-    }
-
-    private void BuildTuningSelection(ControllerControl c)
-    {
-        ShowMappingRows = false;
-        SelectedMappingRows.Clear();
-
-        if (c.IsStick() || c.IsTrigger())
-        {
-            IsStickSelected = c.IsStick();
-            ApplyTuningChannel();
-            ShowTuningEditor = true;
-            PanelHint = string.Empty;
-        }
-        else
-        {
-            ShowTuningEditor = false;
-            IsStickSelected = false;
-            PanelHint = Localizer.Instance.Get("Diagram_ButtonInMapping");
-        }
-    }
-
-    private void ApplyTuningChannel()
-    {
-        int idx = SelectedControl switch
-        {
-            ControllerControl.LeftStick => StickAxisY ? 1 : 0,
-            ControllerControl.RightStick => StickAxisY ? 3 : 2,
-            ControllerControl.LeftTrigger => 4,
-            ControllerControl.RightTrigger => 5,
-            _ => -1,
-        };
-        if (idx >= 0 && idx < Channels.Count)
-            SelectedChannel = Channels[idx];
-    }
-
-    private void BuildMappingSelection(ControllerControl c)
-    {
-        ShowTuningEditor = false;
-        IsStickSelected = false;
-        PanelHint = string.Empty;
-        SelectedMappingRows.Clear();
-        if (Mapping is null) return;
+        object? scrollTarget = null;
+        bool onMappingTab = SelectedTabIndex == 2;
 
         if (c.IsStick())
         {
             var (xCh, yCh) = c == ControllerControl.LeftStick
                 ? (AxisChannel.LeftStickX, AxisChannel.LeftStickY)
                 : (AxisChannel.RightStickX, AxisChannel.RightStickY);
-            AddAxisRow(xCh);
-            AddAxisRow(yCh);
-            AddButtonRow(c.ToButton()); // 스틱 누름(LeftThumb/RightThumb)
+
+            var xVm = Channels.FirstOrDefault(ch => ch.Channel == xCh);
+            var yVm = Channels.FirstOrDefault(ch => ch.Channel == yCh);
+            if (xVm is not null) xVm.IsHighlighted = true;
+            if (yVm is not null) yVm.IsHighlighted = true;
+
+            var xRow = Mapping.AxisRows.FirstOrDefault(r => r.Axis == xCh);
+            var yRow = Mapping.AxisRows.FirstOrDefault(r => r.Axis == yCh);
+            if (xRow is not null) xRow.IsHighlighted = true;
+            if (yRow is not null) yRow.IsHighlighted = true;
+            var thumbRow = Mapping.ButtonRows.FirstOrDefault(r => r.Button == c.ToButton());
+            if (thumbRow is not null) thumbRow.IsHighlighted = true;
+
+            scrollTarget = onMappingTab ? (object?)xRow ?? thumbRow : xVm;
         }
         else if (c.IsTrigger())
         {
-            AddAxisRow(c == ControllerControl.LeftTrigger ? AxisChannel.LeftTrigger : AxisChannel.RightTrigger);
+            var ch = c == ControllerControl.LeftTrigger ? AxisChannel.LeftTrigger : AxisChannel.RightTrigger;
+            var vm = Channels.FirstOrDefault(x => x.Channel == ch);
+            if (vm is not null) vm.IsHighlighted = true;
+            var row = Mapping.AxisRows.FirstOrDefault(r => r.Axis == ch);
+            if (row is not null) row.IsHighlighted = true;
+
+            scrollTarget = onMappingTab ? (object?)row : vm;
         }
         else
         {
-            AddButtonRow(c.ToButton());
+            // 버튼은 튜닝 대상이 아니므로 매핑 탭에서만 강조/스크롤.
+            var row = Mapping.ButtonRows.FirstOrDefault(r => r.Button == c.ToButton());
+            if (row is not null) row.IsHighlighted = true;
+            scrollTarget = onMappingTab ? row : null;
         }
 
-        ShowMappingRows = SelectedMappingRows.Count > 0;
-        if (!ShowMappingRows)
-            PanelHint = Localizer.Instance.Get("Diagram_Hint");
-    }
-
-    private void AddAxisRow(AxisChannel ch)
-    {
-        var row = Mapping.AxisRows.FirstOrDefault(r => r.Axis == ch);
-        if (row is not null) SelectedMappingRows.Add(row);
-    }
-
-    private void AddButtonRow(XboxButton button)
-    {
-        if (button == XboxButton.None) return;
-        var row = Mapping.ButtonRows.FirstOrDefault(r => r.Button == button);
-        if (row is not null) SelectedMappingRows.Add(row);
+        if (scrollTarget is not null)
+            ScrollToRequested?.Invoke(scrollTarget);
     }
 
     partial void OnIsDriverEnabledChanged(bool value)

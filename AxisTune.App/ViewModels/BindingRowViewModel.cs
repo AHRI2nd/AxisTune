@@ -24,6 +24,9 @@ public partial class BindingRowViewModel : ObservableObject
 
     public string CaptureLabel => Localizer.Instance.Get(IsCapturing ? "Map_Waiting" : "Map_Bind");
 
+    /// <summary>게임패드 다이어그램에서 대응 컨트롤이 선택되면 true(패널 스크롤·강조용).</summary>
+    [ObservableProperty] private bool isHighlighted;
+
     private readonly Action<BindingRowViewModel> _bind;
     private readonly Action<BindingRowViewModel> _clear;
 

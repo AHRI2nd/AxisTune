@@ -21,6 +21,9 @@ public sealed class AppSettings
     /// <summary>앱 시작 시 GitHub 릴리스에서 업데이트 확인.</summary>
     public bool CheckForUpdatesOnStartup { get; set; } = true;
 
+    /// <summary>마지막으로 본 탭 인덱스(재실행 시 복원).</summary>
+    public int LastTab { get; set; }
+
     /// <summary>마지막으로 선택한 장치(있으면 시작 시 자동 선택).</summary>
     public uint? LastDeviceInstanceId { get; set; }
 

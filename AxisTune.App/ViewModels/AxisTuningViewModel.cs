@@ -36,6 +36,9 @@ public partial class AxisTuningViewModel : ObservableObject
     [ObservableProperty] private double previewInput = -1;
     [ObservableProperty] private double previewOutput;
 
+    /// <summary>게임패드 다이어그램에서 대응 컨트롤이 선택되면 true(패널 스크롤·강조용).</summary>
+    [ObservableProperty] private bool isHighlighted;
+
     /// <summary>편집값(곡선/데드존/범위/인버트/보간)이 바뀌면 발생.</summary>
     public event Action? Changed;
 

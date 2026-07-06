@@ -13,6 +13,15 @@
         Icon="/Assets/app.ico"
         Title="AxisTune">
 
+    <Window.Styles>
+        <!-- 게임패드 다이어그램에서 선택된 컨트롤에 대응하는 패널 항목 강조. -->
+        <Style Selector="Border.highlighted">
+            <Setter Property="Background" Value="#1F4C8DF6" />
+            <Setter Property="BorderBrush" Value="#4C8DF6" />
+            <Setter Property="BorderThickness" Value="1.5" />
+        </Style>
+    </Window.Styles>
+
     <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" Margin="20">
 
         <!-- 헤더: 상태 + 드라이버 On/Off (항상 표시) -->
@@ -150,97 +159,94 @@
                 </ScrollViewer>
             </TabItem>
 
-            <!-- ===== 튜닝 탭 (좌: 컨텍스트 패널 / 우: 게임패드) ===== -->
+            <!-- ===== 튜닝 탭 (좌: 전체 채널 목록 / 우: 게임패드) ===== -->
             <TabItem Header="{l:Loc Tab_Tuning}">
-                <Grid ColumnDefinitions="290,*" Margin="0,8,0,0" ColumnSpacing="12">
+                <Grid ColumnDefinitions="336,*" Margin="0,8,0,0" ColumnSpacing="12">
                     <Border Grid.Column="0" Background="#15151A" CornerRadius="12" Padding="14">
-                      <ScrollViewer AllowAutoHide="False" HorizontalScrollBarVisibility="Disabled">
-                        <StackPanel Spacing="12">
-                          <TextBlock Text="{Binding PanelHint}" Foreground="#9AA0A6" FontSize="13" TextWrapping="Wrap"
-                                     IsVisible="{Binding PanelHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                          <StackPanel Spacing="14" IsVisible="{Binding ShowTuningEditor}">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Grid.Column="0" Text="{Binding SelectedChannel.Label}" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding StickAxisY}" OnContent="Y" OffContent="X"
-                                              IsVisible="{Binding IsStickSelected}" />
-                            </Grid>
+                      <ScrollViewer Name="ChannelsScroll" AllowAutoHide="False" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Spacing="10">
+                          <TextBlock FontSize="11" Foreground="#7A8088" Text="{l:Loc Tune_CurveHint}" />
+                          <ItemsControl Name="ChannelsList" ItemsSource="{Binding Channels}">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="vm:AxisTuningViewModel">
+                                <Border CornerRadius="10" Padding="12" Margin="0,0,0,12" Classes.highlighted="{Binding IsHighlighted}">
+                                  <StackPanel Spacing="10">
+                                    <TextBlock Text="{Binding Label}" FontWeight="SemiBold" />
 
-                            <ctrl:CurveEditor Height="200"
-                                              Points="{Binding SelectedChannel.Points}"
-                                              Interpolation="{Binding SelectedChannel.Interpolation}"
-                                              InnerDeadzone="{Binding SelectedChannel.InnerDeadzone}"
-                                              OuterDeadzone="{Binding SelectedChannel.OuterDeadzone}"
-                                              PreviewInput="{Binding SelectedChannel.PreviewInput}" />
+                                    <ctrl:CurveEditor Height="160"
+                                                      Points="{Binding Points}"
+                                                      Interpolation="{Binding Interpolation}"
+                                                      InnerDeadzone="{Binding InnerDeadzone}"
+                                                      OuterDeadzone="{Binding OuterDeadzone}"
+                                                      PreviewInput="{Binding PreviewInput}" />
 
-                            <TextBlock FontSize="11" Foreground="#7A8088" Text="{l:Loc Tune_CurveHint}" />
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="{l:Loc Tune_PresetsLabel}" FontSize="11" Foreground="#7A8088" />
+                                        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="6">
+                                            <Button Grid.Column="0" Content="{l:Loc Tune_PresetLinear}" HorizontalAlignment="Stretch"
+                                                    HorizontalContentAlignment="Center" FontSize="11" Padding="4,6"
+                                                    Command="{Binding PresetLinearCommand}" />
+                                            <Button Grid.Column="1" Content="{l:Loc Tune_PresetAggressive}" HorizontalAlignment="Stretch"
+                                                    HorizontalContentAlignment="Center" FontSize="11" Padding="4,6"
+                                                    Command="{Binding PresetAggressiveCommand}" />
+                                            <Button Grid.Column="2" Content="{l:Loc Tune_PresetSmooth}" HorizontalAlignment="Stretch"
+                                                    HorizontalContentAlignment="Center" FontSize="11" Padding="4,6"
+                                                    Command="{Binding PresetSmoothCommand}" />
+                                        </Grid>
+                                    </StackPanel>
 
-                            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
-                                <Button Grid.Column="0" Content="{l:Loc Tune_PresetLinear}" HorizontalAlignment="Stretch"
-                                        Command="{Binding SelectedChannel.PresetLinearCommand}" />
-                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                                    <Button Content="{l:Loc Tune_PresetAggressive}" Command="{Binding SelectedChannel.PresetAggressiveCommand}" />
-                                    <Button Content="{l:Loc Tune_PresetSmooth}" Command="{Binding SelectedChannel.PresetSmoothCommand}" />
-                                </StackPanel>
-                            </Grid>
+                                    <StackPanel Spacing="4">
+                                        <Grid ColumnDefinitions="Auto,*,Auto">
+                                            <TextBlock Grid.Column="0" Text="{l:Loc Tune_InputMin}" Width="86" FontSize="12" />
+                                            <Slider Grid.Column="1" Minimum="0" Maximum="0.95" Value="{Binding InputMin}" />
+                                            <TextBlock Grid.Column="2" Width="40" TextAlignment="Right" FontSize="12"
+                                                       Text="{Binding InputMin, StringFormat='{}{0:P0}'}" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="Auto,*,Auto">
+                                            <TextBlock Grid.Column="0" Text="{l:Loc Tune_InputMax}" Width="86" FontSize="12" />
+                                            <Slider Grid.Column="1" Minimum="0.05" Maximum="1" Value="{Binding InputMax}" />
+                                            <TextBlock Grid.Column="2" Width="40" TextAlignment="Right" FontSize="12"
+                                                       Text="{Binding InputMax, StringFormat='{}{0:P0}'}" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="Auto,*,Auto">
+                                            <TextBlock Grid.Column="0" Text="{l:Loc Tune_InnerDeadzone}" Width="86" FontSize="12" />
+                                            <Slider Grid.Column="1" Minimum="0" Maximum="0.9" Value="{Binding InnerDeadzone}" />
+                                            <TextBlock Grid.Column="2" Width="40" TextAlignment="Right" FontSize="12"
+                                                       Text="{Binding InnerDeadzone, StringFormat='{}{0:P0}'}" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="Auto,*,Auto">
+                                            <TextBlock Grid.Column="0" Text="{l:Loc Tune_OuterDeadzone}" Width="86" FontSize="12" />
+                                            <Slider Grid.Column="1" Minimum="0" Maximum="0.9" Value="{Binding OuterDeadzone}" />
+                                            <TextBlock Grid.Column="2" Width="40" TextAlignment="Right" FontSize="12"
+                                                       Text="{Binding OuterDeadzone, StringFormat='{}{0:P0}'}" />
+                                        </Grid>
+                                    </StackPanel>
 
-                            <StackPanel Spacing="4">
-                                <Grid ColumnDefinitions="Auto,*,Auto">
-                                    <TextBlock Grid.Column="0" Text="{l:Loc Tune_InputMin}" Width="92" />
-                                    <Slider Grid.Column="1" Minimum="0" Maximum="0.95"
-                                            Value="{Binding SelectedChannel.InputMin}" />
-                                    <TextBlock Grid.Column="2" Width="44" TextAlignment="Right"
-                                               Text="{Binding SelectedChannel.InputMin, StringFormat='{}{0:P0}'}" />
-                                </Grid>
-                                <Grid ColumnDefinitions="Auto,*,Auto">
-                                    <TextBlock Grid.Column="0" Text="{l:Loc Tune_InputMax}" Width="92" />
-                                    <Slider Grid.Column="1" Minimum="0.05" Maximum="1"
-                                            Value="{Binding SelectedChannel.InputMax}" />
-                                    <TextBlock Grid.Column="2" Width="44" TextAlignment="Right"
-                                               Text="{Binding SelectedChannel.InputMax, StringFormat='{}{0:P0}'}" />
-                                </Grid>
-                                <Grid ColumnDefinitions="Auto,*,Auto">
-                                    <TextBlock Grid.Column="0" Text="{l:Loc Tune_InnerDeadzone}" Width="92" />
-                                    <Slider Grid.Column="1" Minimum="0" Maximum="0.9"
-                                            Value="{Binding SelectedChannel.InnerDeadzone}" />
-                                    <TextBlock Grid.Column="2" Width="44" TextAlignment="Right"
-                                               Text="{Binding SelectedChannel.InnerDeadzone, StringFormat='{}{0:P0}'}" />
-                                </Grid>
-                                <Grid ColumnDefinitions="Auto,*,Auto">
-                                    <TextBlock Grid.Column="0" Text="{l:Loc Tune_OuterDeadzone}" Width="92" />
-                                    <Slider Grid.Column="1" Minimum="0" Maximum="0.9"
-                                            Value="{Binding SelectedChannel.OuterDeadzone}" />
-                                    <TextBlock Grid.Column="2" Width="44" TextAlignment="Right"
-                                               Text="{Binding SelectedChannel.OuterDeadzone, StringFormat='{}{0:P0}'}" />
-                                </Grid>
-                            </StackPanel>
+                                    <StackPanel Spacing="6">
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <TextBlock Grid.Column="0" Text="{l:Loc Tune_Interp}" Width="86" FontSize="12" VerticalAlignment="Center" />
+                                            <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" SelectedIndex="{Binding InterpolationIndex}">
+                                                <ComboBoxItem Content="{l:Loc Tune_Interp_Linear}" />
+                                                <ComboBoxItem Content="{l:Loc Tune_Interp_Cubic}" />
+                                            </ComboBox>
+                                        </Grid>
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <TextBlock Grid.Column="0" Text="{l:Loc Tune_Invert}" Width="86" FontSize="12" VerticalAlignment="Center" />
+                                            <ToggleSwitch Grid.Column="1" HorizontalAlignment="Left" IsChecked="{Binding Invert}" />
+                                        </Grid>
+                                    </StackPanel>
 
-                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                    <TextBlock Text="{l:Loc Tune_Interp}" VerticalAlignment="Center" />
-                                    <ComboBox SelectedIndex="{Binding SelectedChannel.InterpolationIndex}">
-                                        <ComboBoxItem Content="{l:Loc Tune_Interp_Linear}" />
-                                        <ComboBoxItem Content="{l:Loc Tune_Interp_Cubic}" />
-                                    </ComboBox>
-                                </StackPanel>
-                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                    <TextBlock Text="{l:Loc Tune_Invert}" VerticalAlignment="Center" />
-                                    <ToggleSwitch IsChecked="{Binding SelectedChannel.Invert}" />
-                                </StackPanel>
-                            </Grid>
-
-                            <Border Background="#1A1A20" CornerRadius="8" Padding="12">
-                                <StackPanel Spacing="4">
-                                    <TextBlock Text="{l:Loc Tune_PreviewTitle}" FontSize="12" Foreground="#9AA0A6" />
-                                    <TextBlock FontSize="13">
+                                    <TextBlock FontSize="12">
                                         <Run Text="{l:Loc Tune_PreviewIn}" />
-                                        <Run Text="{Binding SelectedChannel.PreviewInput, StringFormat='{}{0:P0}'}" Foreground="#4C8DF6" />
+                                        <Run Text="{Binding PreviewInput, StringFormat='{}{0:P0}'}" Foreground="#4C8DF6" />
                                         <Run Text="{l:Loc Tune_PreviewArrow}" />
-                                        <Run Text="{Binding SelectedChannel.PreviewOutput, StringFormat='{}{0:P0}'}" Foreground="#34C759" />
+                                        <Run Text="{Binding PreviewOutput, StringFormat='{}{0:P0}'}" Foreground="#34C759" />
                                     </TextBlock>
-                                    <TextBlock FontSize="11" Foreground="#7A8088" Text="{l:Loc Tune_PreviewNote}" />
-                                </StackPanel>
-                            </Border>
-                          </StackPanel>
+                                  </StackPanel>
+                                </Border>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
                         </StackPanel>
                       </ScrollViewer>
                     </Border>
@@ -250,7 +256,7 @@
 
             <!-- ===== 매핑 탭 (좌: 선택 컨트롤 바인딩 / 우: 게임패드) ===== -->
             <TabItem Header="{l:Loc Tab_Mapping}">
-                <Grid ColumnDefinitions="290,*" Margin="0,8,0,0" ColumnSpacing="12">
+                <Grid ColumnDefinitions="336,*" Margin="0,8,0,0" ColumnSpacing="12">
                     <Border Grid.Column="0" Background="#15151A" CornerRadius="12" Padding="14">
                       <ScrollViewer AllowAutoHide="False" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel Spacing="12">
@@ -262,24 +268,51 @@
                               <ToggleSwitch Grid.Column="1" IsChecked="{Binding ManualMappingEnabled}" />
                           </Grid>
 
-                          <TextBlock Text="{Binding PanelHint}" Foreground="#9AA0A6" FontSize="13" TextWrapping="Wrap"
-                                     IsVisible="{Binding PanelHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                          <TextBlock FontSize="11" Foreground="#7A8088" Text="{l:Loc Map_Hint}" />
 
-                          <StackPanel IsVisible="{Binding ShowMappingRows}" IsEnabled="{Binding ManualMappingEnabled}" Spacing="2">
-                              <ItemsControl ItemsSource="{Binding SelectedMappingRows}">
-                                  <ItemsControl.ItemTemplate>
-                                      <DataTemplate x:DataType="vm:BindingRowViewModel">
-                                          <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,4" ColumnSpacing="8">
-                                              <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                                  <TextBlock Text="{Binding Label}" />
-                                                  <TextBlock Text="{Binding BindingText}" FontSize="11" Foreground="#9AA0A6" />
-                                              </StackPanel>
-                                              <Button Grid.Column="1" Content="{Binding CaptureLabel}" Command="{Binding BindCommand}" />
-                                              <Button Grid.Column="2" Content="✕" Command="{Binding ClearCommand}" />
-                                          </Grid>
-                                      </DataTemplate>
-                                  </ItemsControl.ItemTemplate>
-                              </ItemsControl>
+                          <StackPanel IsEnabled="{Binding ManualMappingEnabled}" Spacing="14">
+                              <StackPanel Spacing="6">
+                                  <Grid ColumnDefinitions="*,Auto">
+                                      <TextBlock Grid.Column="0" Text="{l:Loc Map_Buttons}" FontWeight="SemiBold" Foreground="#C8CCD0" />
+                                      <Button Grid.Column="1" Content="{l:Loc Map_ClearAll}" Command="{Binding Mapping.ClearAllCommand}" />
+                                  </Grid>
+                                  <ItemsControl Name="ButtonRowsList" ItemsSource="{Binding Mapping.ButtonRows}">
+                                      <ItemsControl.ItemTemplate>
+                                          <DataTemplate x:DataType="vm:BindingRowViewModel">
+                                              <Border CornerRadius="6" Padding="8,4" Margin="0,1" Classes.highlighted="{Binding IsHighlighted}">
+                                                  <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                                                      <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                                          <TextBlock Text="{Binding Label}" />
+                                                          <TextBlock Text="{Binding BindingText}" FontSize="11" Foreground="#9AA0A6" />
+                                                      </StackPanel>
+                                                      <Button Grid.Column="1" Content="{Binding CaptureLabel}" Command="{Binding BindCommand}" />
+                                                      <Button Grid.Column="2" Content="✕" Command="{Binding ClearCommand}" />
+                                                  </Grid>
+                                              </Border>
+                                          </DataTemplate>
+                                      </ItemsControl.ItemTemplate>
+                                  </ItemsControl>
+                              </StackPanel>
+
+                              <StackPanel Spacing="6">
+                                  <TextBlock Text="{l:Loc Map_Axes}" FontWeight="SemiBold" Foreground="#C8CCD0" />
+                                  <ItemsControl Name="AxisRowsList" ItemsSource="{Binding Mapping.AxisRows}">
+                                      <ItemsControl.ItemTemplate>
+                                          <DataTemplate x:DataType="vm:BindingRowViewModel">
+                                              <Border CornerRadius="6" Padding="8,4" Margin="0,1" Classes.highlighted="{Binding IsHighlighted}">
+                                                  <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                                                      <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                                          <TextBlock Text="{Binding Label}" />
+                                                          <TextBlock Text="{Binding BindingText}" FontSize="11" Foreground="#9AA0A6" />
+                                                      </StackPanel>
+                                                      <Button Grid.Column="1" Content="{Binding CaptureLabel}" Command="{Binding BindCommand}" />
+                                                      <Button Grid.Column="2" Content="✕" Command="{Binding ClearCommand}" />
+                                                  </Grid>
+                                              </Border>
+                                          </DataTemplate>
+                                      </ItemsControl.ItemTemplate>
+                                  </ItemsControl>
+                              </StackPanel>
                           </StackPanel>
                         </StackPanel>
                       </ScrollViewer>
